@@ -39,3 +39,19 @@ The default was changed to `qwen3.5:4b`; HTTP failures now include the local ser
 No personal LinkedIn PDF was supplied. The fixture is synthetic selectable text, not evidence that every LinkedIn export variant imports perfectly. Scans, OCR, complex layouts, missing dates, multilingual font coverage, real employer parsers, and hiring outcomes are not established by these checks.
 
 Source quotations and numeric-token preservation constrain model output; they do not prove semantic entailment, complete requirement extraction, fair weighting, or factual fidelity of all generated prose. Human review remains necessary.
+
+## qwen3.5:4b full workflow
+
+All five Task commands completed with real inference (no mocks) against the synthetic fixture:
+
+- `task import`: review-gated YAML; the explicit URL was preserved; profile verified `reviewed: false`.
+- `task resume` (no job): one-page PDF, all bullets and the numeric achievement intact; rendered page inspected.
+- `task match`: coverage 83.3% — required Python/PostgreSQL supported, professional English supported, desired Docker supported, Kubernetes unproven; every quote matched the profile; formula and disclaimer present in `match.md`.
+- `task resume` with `JOB_DESCRIPTION`: no experience bullet carried evidence (skills-based only), so the full history was retained with the documented warning; one page.
+- `task cover-letter`: evidence-checked letter, one-page PDF inspected visually.
+- `task ats` on the tailored resume: 100/100 for this fixture.
+- Shell-injection probe inside `JOB_DESCRIPTION` produced no marker file.
+
+Defect found and fixed: the first real letter presented the job's title ("Backend Engineer") as the candidate's title. Instructions now restrict title claims to profile experience lines, and a corrected run was executed. Model wording remains a review obligation: the letter's claims were supported by profile lines, but entailment is not formally proven.
+
+Diagnostics: a 9B runner kill under the Docker VM memory budget caused the only HTTP 500; reduced to 4B and documented. No GPU configuration was changed.
