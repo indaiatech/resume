@@ -105,6 +105,23 @@ def test_resume_wording_rejects_changed_metrics(monkeypatch, profile):
         drafting.draft_resume(profile, "en", None)
 
 
+def test_two_column_pdf_is_extracted_column_by_column(tmp_path):
+    source = tmp_path / "twocol.pdf"
+    with fitz.open() as pdf:
+        page = pdf.new_page()
+        page.insert_text((40, 40), "Summary")
+        page.insert_text((40, 60), "I lead engineering initiatives with reliability.")
+        page.insert_text((40, 80), "acquired companies and unicorns included.")
+        page.insert_text((330, 40), "Top Skills")
+        page.insert_text((330, 60), "Argo")
+        page.insert_text((330, 80), "MySQL")
+        pdf.save(source)
+    text = extract_pdf(source)
+    assert "with reliability." in text
+    assert text.index("initiatives with reliability.") < text.index("Top Skills")
+    assert "operatingTop" not in text.replace(" ", "")
+
+
 def test_import_preserves_explicit_links_omitted_by_model(tmp_path, monkeypatch):
     from resume_tool import cli
     from resume_tool.models import ImportResult

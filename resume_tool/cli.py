@@ -15,7 +15,7 @@ from pydantic import ValidationError
 
 from .llm import infer
 from .models import (
-    ImportResult, LetterResult, MatchResult, Profile, facts, normalized,
+    ImportResult, LetterResult, MatchResult, Profile, condensed, facts, normalized,
     score_match, validate_evidence,
 )
 
@@ -62,6 +62,26 @@ def job_description(required: bool) -> str | None:
     return job
 
 
+def _page_text(page) -> str:
+    # LinkedIn exports use a sidebar plus a main column; naive extraction interleaves them mid-sentence.
+    blocks = [b for b in page.get_text("blocks") if b[6] == 0 and b[4].strip()]
+    if len(blocks) >= 4:
+        # Cluster blocks by where their text starts: each x0 cluster is one column,
+        # read columns left to right and top to bottom inside each.
+        starts = sorted({b[0] for b in blocks})
+        clusters: list[float] = []
+        for x in starts:
+            if not clusters or x - clusters[-1] > 40:
+                clusters.append(x)
+
+        def column(b) -> int:
+            return next(i for i, x in enumerate(clusters) if x <= b[0] + 1e-6 and (i + 1 == len(clusters) or b[0] + 1e-6 < clusters[i + 1]))
+
+        ordered = sorted(blocks, key=lambda b: (column(b), b[1], b[0]))
+        return "\n".join(b[4] for b in ordered)
+    return page.get_text(sort=True)
+
+
 def extract_pdf(path: Path) -> str:
     if path.stat().st_size > 25 * 1024 * 1024:
         raise ValueError("PDF exceeds 25 MB")
@@ -70,7 +90,7 @@ def extract_pdf(path: Path) -> str:
             raise ValueError("Encrypted PDF: export an unencrypted copy first")
         if document.page_count > 30:
             raise ValueError("PDF exceeds 30 pages")
-        pages = [page.get_text(sort=True).strip() for page in document]
+        pages = [_page_text(page).strip() for page in document]
     if not pages or any(len(page) < 20 for page in pages):
         raise ValueError("PDF has empty or image-only pages. Export a text-based LinkedIn PDF; OCR is not supported")
     text = "\n\n".join(pages)
@@ -98,10 +118,15 @@ def import_profile(pdf: Path, destination: Path) -> None:
     ), {"pdf_text": text})
     profile = result.profile
     profile.reviewed = False
-    profile.links = list(dict.fromkeys([
-        *profile.links,
-        *(url.rstrip(".,;") for url in re.findall(r"(?:https?://|www\.|linkedin\.com/)[^\s<>()]+", text)),
-    ]))
+    # Contacts are searched in whitespace-preserving text; URLs may wrap, so a second
+    # pass runs on condensed text and drops path-less fragments like "www.linkedin.com/in/".
+    profile.links = list(dict.fromkeys(
+        url for url in [
+            *profile.links,
+            *(re.findall(r"(?:https?://|www\.|linkedin\.com/)[^\s<>()]+", normalized(text))),
+            *(url for url in re.findall(r"(?:https?://|www\.|linkedin\.com/)[^\s<>()]+", condensed(text)) if not url.endswith("/")),
+        ] if not url.endswith("/")))
+    profile.email = profile.email or next(iter(re.findall(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+", normalized(text))), None)
     # A copied fact must actually occur in the PDF; normalized dates are reviewed separately.
     values = [profile.name, profile.email, profile.phone, profile.location, profile.summary]
     values += profile.links + profile.skills + profile.languages + profile.certifications
@@ -109,7 +134,7 @@ def import_profile(pdf: Path, destination: Path) -> None:
         values += [entry.company, entry.title, entry.location, *entry.bullets]
     for entry in profile.education:
         values += [entry.institution, entry.degree]
-    unsupported = [value for value in values if value and normalized(value) not in normalized(text)]
+    unsupported = [value for value in values if value and condensed(value) not in condensed(text)]
     if unsupported:
         dump(folder / "rejected-import.json", result.model_dump())
         raise ValueError(f"Import contains facts not copied from the PDF: {unsupported[:3]}. Inspect {folder}; no profile was written")

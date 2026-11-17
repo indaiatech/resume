@@ -115,6 +115,12 @@ def normalized(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip().casefold()
 
 
+def condensed(text: str) -> str:
+    # PDFs wrap lines and hyphenate; only a whitespace-free string is a reliable containment check.
+    # Curly quotes are normalized the same way models rewrite them.
+    return re.sub(r"\s+", "", text).replace("\u2019", "'").replace("\u2018", "'").casefold()
+
+
 def validate_evidence(evidence: list[Evidence], source: dict[str, str]) -> None:
     for item in evidence:
         if item.ref not in source or normalized(item.quote) not in normalized(source[item.ref]):
