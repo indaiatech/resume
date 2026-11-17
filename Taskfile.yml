@@ -1,0 +1,58 @@
+version: '3'
+
+vars:
+  MODEL: '{{default "qwen3.5:4b" .OLLAMA_MODEL}}'
+  PROFILE: '{{default "profile.yaml" .PROFILE}}'
+
+tasks:
+  default:
+    cmds:
+      - task --list
+
+  setup:
+    desc: Install Python dependencies and download the local model (internet required once)
+    cmds:
+      - uv sync --dev
+      - docker compose pull
+      - task: model-up
+      - docker compose exec -T ollama ollama pull {{.MODEL | shellQuote}}
+
+  model-up:
+    desc: Start local Ollama, bound only to loopback
+    cmds:
+      - docker compose up -d --wait --pull never
+
+  model-down:
+    desc: Stop the local model service without deleting models
+    cmds:
+      - docker compose stop
+
+  import:
+    desc: Import a text-based LinkedIn PDF into a reviewable YAML profile
+    cmds:
+      - uv run --offline --frozen resume-tool --profile {{.PROFILE | shellQuote}} import {{range .CLI_ARGS_LIST}}{{. | shellQuote}} {{end}}
+
+  resume:
+    desc: Generate a Typst resume; JOB_DESCRIPTION optionally selects relevant experience
+    cmds:
+      - uv run --offline --frozen resume-tool --profile {{.PROFILE | shellQuote}} resume
+
+  ats:
+    desc: Check a PDF's readability offline (pass its path after --)
+    cmds:
+      - uv run --offline --frozen resume-tool ats {{range .CLI_ARGS_LIST}}{{. | shellQuote}} {{end}}
+
+  match:
+    desc: Estimate evidence coverage of JOB_DESCRIPTION and write a detailed report
+    cmds:
+      - uv run --offline --frozen resume-tool --profile {{.PROFILE | shellQuote}} match
+
+  cover-letter:
+    desc: Draft editable text and a Typst PDF for JOB_DESCRIPTION
+    cmds:
+      - uv run --offline --frozen resume-tool --profile {{.PROFILE | shellQuote}} cover-letter
+
+  test:
+    desc: Run deterministic local regression checks without inference
+    cmds:
+      - uv run --offline --frozen pytest -q

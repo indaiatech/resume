@@ -1,0 +1,43 @@
+# Synthetic example only. Replace with your reviewed professional facts.
+reviewed: true
+name: Alex Example
+email: alex@example.com
+phone: '+55 11 99999-0000'
+location: Sao Paulo, Brazil
+links:
+  - https://example.com/alex
+summary: null
+experience:
+  - id: example-platform
+    company: Example Systems
+    title: Software Engineer
+    start: '2021-03'
+    end: null
+    location: Sao Paulo, Brazil
+    bullets:
+      - Built Python APIs with FastAPI and PostgreSQL.
+      - Reduced API response time by 30 percent through query optimization.
+      - Operated Docker services and reviewed automated tests.
+  - id: sample-services
+    company: Sample Services
+    title: Junior Software Engineer
+    start: '2019-01'
+    end: '2021-02'
+    location: Sao Paulo, Brazil
+    bullets:
+      - Maintained Python data processing jobs and SQL reports.
+education:
+  - id: example-university
+    institution: Example University
+    degree: Bachelor of Computer Science
+    start: '2015'
+    end: '2018'
+skills:
+  - Python
+  - FastAPI
+  - PostgreSQL
+  - Docker
+languages:
+  - Portuguese (native)
+  - English (professional)
+certifications: []
