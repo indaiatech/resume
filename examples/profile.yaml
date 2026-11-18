@@ -35,10 +35,10 @@ education:
     start: '2015'
     end: '2018'
 skills:
-  - Python
-  - FastAPI
-  - PostgreSQL
-  - Docker
+- label: Languages
+  items: [Python, TypeScript]
+- label: Tools
+  items: [Git, Docker, GitHub Actions]
 languages:
   - Portuguese (native)
   - English (professional)

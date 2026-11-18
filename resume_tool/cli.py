@@ -132,7 +132,12 @@ def import_profile(pdf: Path, destination: Path) -> None:
     profile.email = profile.email or next(iter(re.findall(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+", normalized(text))), None)
     # A copied fact must actually occur in the PDF; normalized dates are reviewed separately.
     values = [profile.name, profile.email, profile.phone, profile.location, profile.summary]
-    values += profile.links + profile.skills + profile.languages
+    values += profile.links + profile.languages
+    for group in profile.skills:
+        if isinstance(group, str):
+            values.append(group)
+        else:
+            values += [group.label, *group.items]
     values += [c if isinstance(c, str) else c.name for c in profile.certifications]
     for entry in profile.experience:
         values += [entry.company, entry.title, entry.location, *entry.bullets]

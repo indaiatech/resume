@@ -37,6 +37,11 @@ class Certification(Record):
     credential_id: str | None = None
 
 
+class SkillGroup(Record):
+    label: str = Field(min_length=1)
+    items: list[str] = Field(min_length=1)
+
+
 class Education(Record):
     id: str = Field(pattern=r"^[a-z][a-z0-9-]*$")
     institution: str = Field(min_length=1)
@@ -56,7 +61,7 @@ class Profile(Record):
     summary: str | None = None
     experience: list[Experience] = Field(default_factory=list)
     education: list[Education] = Field(default_factory=list)
-    skills: list[str] = Field(default_factory=list)
+    skills: list[SkillGroup | str] = Field(default_factory=list)
     languages: list[str] = Field(default_factory=list)
     certifications: list[Certification | str] = Field(default_factory=list)
 
@@ -115,9 +120,15 @@ def facts(profile: Profile) -> dict[str, str]:
             result[f"experience:{item.id}:bullet:{i}"] = bullet
     for item in profile.education:
         result[f"education:{item.id}"] = f"{item.degree} — {item.institution}"
-    for field in ("skills", "languages"):
-        for i, value in enumerate(getattr(profile, field)):
-            result[f"{field}:{i}"] = value
+    for i, value in enumerate(profile.languages):
+        result[f"languages:{i}"] = value
+    for gi, group in enumerate(profile.skills):
+        if isinstance(group, str):
+            result[f"skills:{gi}"] = group
+            continue
+        result[f"skills:{gi}"] = f"{group.label}: {', '.join(group.items)}"
+        for ii, item in enumerate(group.items):
+            result[f"skills:{gi}:{ii}"] = item
     for i, item in enumerate(profile.certifications):
         if isinstance(item, str):
             result[f"certifications:{i}"] = item

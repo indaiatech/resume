@@ -97,20 +97,29 @@
   ]
 }
 
-#if p.skills.len() > 0 {
-  section(labels.skills)[
-    #skills[
-      #(plain(p.skills.join(" · ")))
-    ]
-  ]
-}
+#let skill-list = if p.skills.len() > 0 { skills[
+  #for group in p.skills {
+    if type(group) == str {
+      [- #plain(group)]
+    } else {
+      [- *#group.label:* #plain(group.items.join(", "))]
+    }
+  }
+] }
+#let language-list = if p.languages.len() > 0 { languages[
+  #for lang in p.languages {
+    [- #plain(lang)]
+  }
+] }
 
-#if p.languages.len() > 0 {
-  section(labels.languages)[
-    #languages[
-      #(plain(p.languages.join(" · ")))
-    ]
-  ]
+#if p.skills.len() > 0 and p.languages.len() > 0 {
+  grid-section(columns: (1fr, 1fr), gutter: 2em, sections: (
+    section(labels.skills)[#skill-list],
+    section(labels.languages)[#language-list],
+  ))
+} else {
+  if p.skills.len() > 0 { section(labels.skills)[#skill-list] }
+  if p.languages.len() > 0 { section(labels.languages)[#language-list] }
 }
 
 #if p.certifications.len() > 0 {
