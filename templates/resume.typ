@@ -24,11 +24,10 @@
 // Section title rendered directly (no heading element) so the package's
 // heading wrapper cannot double the underline or pull it into the text.
 #let mysection(title, body) = {
-  block(above: 16pt, below: 4pt)[
+  // Bottom border hugs the text; a line() element would drift with paragraph spacing.
+  block(above: 16pt, below: 6pt, width: 100%, stroke: (bottom: 0.5pt))[
     #set text(size: 11pt, weight: "bold")
     #smallcaps(title)
-    #v(3pt)
-    #line(length: 100%, stroke: 0.4pt)
   ]
   pad(left: 1.4em, body)
 }
