@@ -110,9 +110,9 @@
 #let language-list = if p.languages.len() > 0 { languages[
   #for lang in p.languages {
     if type(lang) == str {
-      grid(columns: (9em, 1fr), gutter: 0.8em, align(left)[*#plain(lang):*], [])
+      grid(columns: (auto, 1fr), gutter: 0.8em, align(left)[*#plain(lang):*], [])
     } else {
-      grid(columns: (9em, 1fr), gutter: 0.8em, align(left)[*#lang.name:*], align(left, if lang.at("level", default: none) == none { [] } else { plain(lang.level) }))
+      grid(columns: (auto, 1fr), gutter: 0.8em, align(left)[*#lang.name:*], align(left, if lang.at("level", default: none) == none { [] } else { plain(lang.level) }))
     }
   }
 ] }
