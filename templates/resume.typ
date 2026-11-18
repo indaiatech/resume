@@ -21,15 +21,17 @@
 )
 // Tighter rhythm keeps the two-page limit with full experience history.
 #set list(spacing: 0.4em)
-#show heading: set block(above: 16pt, below: 8pt)
-// Own heading rendering: the package pulls the underline up with v(-1em),
-// which cuts through text in the Libertinus font metrics.
-#show heading.where(level: 1): it => block[
-  #set text(size: 11pt, weight: "bold")
-  #smallcaps(it.body)
-  #v(3pt)
-  #line(length: 100%, stroke: 0.4pt)
-]
+// Section title rendered directly (no heading element) so the package's
+// heading wrapper cannot double the underline or pull it into the text.
+#let mysection(title, body) = {
+  block(above: 16pt, below: 8pt)[
+    #set text(size: 11pt, weight: "bold")
+    #smallcaps(title)
+    #v(3pt)
+    #line(length: 100%, stroke: 0.4pt)
+  ]
+  pad(left: 1.4em, body)
+}
 
 // Two-column header: identity and contacts on the left, photo on the right.
 // The package header above is intentionally empty; this grid replaces it.
@@ -63,7 +65,7 @@
 #let entry-dates(entry) = dates-helper(start-date: entry.start, end-date: if entry.end == none { labels.current } else { entry.end })
 
 #if p.experience.len() > 0 {
-  section(labels.experience)[
+  mysection(labels.experience)[
     #for entry in p.experience {
       work(
         company: entry.company,
@@ -83,7 +85,7 @@
 }
 
 #if p.education.len() > 0 {
-  section(labels.education)[
+  mysection(labels.education)[
     #for entry in p.education {
       edu(
         institution: entry.institution,
@@ -117,17 +119,17 @@
 ] }
 
 #if p.skills.len() > 0 and p.languages.len() > 0 {
-  grid-section(columns: (1.7fr, 1fr), gutter: 2em, sections: (
-    section(labels.skills)[#skill-list],
-    section(labels.languages)[#language-list],
-  ))
+  grid(columns: (1.7fr, 1fr), gutter: 2em,
+    mysection(labels.skills)[#skill-list],
+    mysection(labels.languages)[#language-list],
+  )
 } else {
-  if p.skills.len() > 0 { section(labels.skills)[#skill-list] }
-  if p.languages.len() > 0 { section(labels.languages)[#language-list] }
+  if p.skills.len() > 0 { mysection(labels.skills)[#skill-list] }
+  if p.languages.len() > 0 { mysection(labels.languages)[#language-list] }
 }
 
 #if p.certifications.len() > 0 {
-  section(labels.certifications)[
+  mysection(labels.certifications)[
     #for entry in p.certifications {
       if type(entry) == str {
         grid(columns: (1fr, auto), align(left)[*#plain(entry)*], [])
