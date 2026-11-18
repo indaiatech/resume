@@ -29,6 +29,11 @@ class Experience(Record):
         return self
 
 
+class Language(Record):
+    name: str = Field(min_length=1)
+    level: str | None = None
+
+
 class Certification(Record):
     name: str = Field(min_length=1)
     issuer: str | None = None
@@ -62,7 +67,7 @@ class Profile(Record):
     experience: list[Experience] = Field(default_factory=list)
     education: list[Education] = Field(default_factory=list)
     skills: list[SkillGroup | str] = Field(default_factory=list)
-    languages: list[str] = Field(default_factory=list)
+    languages: list[Language | str] = Field(default_factory=list)
     certifications: list[Certification | str] = Field(default_factory=list)
 
     @model_validator(mode="after")
@@ -121,7 +126,10 @@ def facts(profile: Profile) -> dict[str, str]:
     for item in profile.education:
         result[f"education:{item.id}"] = f"{item.degree} — {item.institution}"
     for i, value in enumerate(profile.languages):
-        result[f"languages:{i}"] = value
+        if isinstance(value, str):
+            result[f"languages:{i}"] = value
+        else:
+            result[f"languages:{i}"] = f"{value.name} ({value.level})" if value.level else value.name
     for gi, group in enumerate(profile.skills):
         if isinstance(group, str):
             result[f"skills:{gi}"] = group

@@ -105,14 +105,18 @@
       [- #plain(group)]
     } else {
       // Label column and items column: items never wrap below the category.
-      grid(columns: (9em, 1fr), gutter: 0.8em, align(left)[*#group.label:*], align(left, plain(group.items.join(", "))))
+      grid(columns: (11em, 1fr), gutter: 0.8em, align(left)[*#group.label:*], align(left, plain(group.items.join(", "))))
       v(0.4em)
     }
   }
 ] }
 #let language-list = if p.languages.len() > 0 { languages[
   #for lang in p.languages {
-    [- #plain(lang)]
+    if type(lang) == str {
+      grid(columns: (9em, 1fr), gutter: 0.8em, align(left)[*#plain(lang):*], [])
+    } else {
+      grid(columns: (9em, 1fr), gutter: 0.8em, align(left)[*#lang.name:*], align(left, if lang.at("level", default: none) == none { [] } else { plain(lang.level) }))
+    }
   }
 ] }
 
@@ -128,11 +132,18 @@
 
 #if p.certifications.len() > 0 {
   section(labels.certifications)[
-    #for (index, entry) in p.certifications.enumerate() {
-      if index > 0 { linebreak() }
-      let date = if type(entry) == str { "" } else { if entry.at("expires", default: none) == none { if entry.at("issued", default: none) == none { "" } else { entry.issued } } else { dates-helper(start-date: entry.issued, end-date: entry.expires) } }
-      let parts = if type(entry) == str { (entry,) } else { (entry.name, ..if entry.at("issuer", default: none) == none { () } else { (entry.issuer,) }, date) }
-      plain(parts.filter(part => part != "").join(" · "))
+    #for entry in p.certifications {
+      if type(entry) == str {
+        grid(columns: (1fr, auto), align(left)[*#plain(entry)*], [])
+      } else {
+        let date = if entry.at("expires", default: none) == none { if entry.at("issued", default: none) == none { "" } else { entry.issued } } else { dates-helper(start-date: entry.issued, end-date: entry.expires) }
+        grid(
+          columns: (1fr, auto),
+          align(left)[*#plain(entry.name)*#if entry.at("issuer", default: none) == none { [] } else { [, #emph(entry.issuer)] }],
+          align(right, date),
+        )
+        v(0.3em)
+      }
     }
   ]
 }
