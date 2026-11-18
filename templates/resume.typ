@@ -66,19 +66,21 @@
 #if p.experience.len() > 0 {
   mysection(labels.experience)[
     #for entry in p.experience {
-      work(
-        company: entry.company,
-        title: entry.title,
-        dates: entry-dates(entry),
-        // The package renders "modality — location"; when there is no modality,
-        // carry the location in its slot to avoid a leading dash.
-        modality: if entry.at("modality", default: none) == none {
-          if entry.at("location", default: none) == none { "" } else { entry.location }
-        } else { labels.modalities.at(entry.modality) },
-        location: if entry.at("modality", default: none) == none { "" } else { if entry.at("location", default: none) == none { "" } else { entry.location } },
-      )[
-        #(if entry.bullets.len() > 0 { list(..entry.bullets.map(bullet => plain(bullet))) } else { [] })
-      ]
+      // Same two-by-two structure as the package's work(), so the
+      // modality—location line can be styled locally.
+      let modality = if entry.at("modality", default: none) == none {
+        if entry.at("location", default: none) == none { "" } else { entry.location }
+      } else { labels.modalities.at(entry.modality) }
+      let location = if entry.at("modality", default: none) == none { "" } else { if entry.at("location", default: none) == none { "" } else { entry.location } }
+      grid(
+        columns: (1fr, 1fr),
+        align(left)[#strong(entry.company) \ #emph(entry.title)],
+        align(right)[#strong(entry-dates(entry)) \ #emph[#modality#if location != "" [#sym.dash.em #location]]],
+      )
+      v(2pt)
+      if entry.bullets.len() > 0 {
+        block(above: 3pt, below: 8pt, pad(left: 1.5em, list(indent: 0.25em, spacing: 0.8em, ..entry.bullets.map(bullet => plain(bullet)))))
+      }
     }
   ]
 }
@@ -93,6 +95,7 @@
         location: if p.at("location", default: none) == none { "" } else { p.at("location", default: none) },
       )[]
     }
+    #v(8pt)
   ]
 }
 
@@ -106,6 +109,7 @@
       v(0.4em)
     }
   }
+  #v(8pt)
 ] }
 #let language-list = if p.languages.len() > 0 { languages[
   #for lang in p.languages {
@@ -115,6 +119,7 @@
       grid(columns: (auto, 1fr), gutter: 0.8em, align(left)[*#lang.name:*], align(left, if lang.at("level", default: none) == none { [] } else { plain(lang.level) }))
     }
   }
+  #v(8pt)
 ] }
 
 #if p.skills.len() > 0 and p.languages.len() > 0 {
@@ -142,5 +147,6 @@
         v(0.3em)
       }
     }
+    #v(8pt)
   ]
 }
