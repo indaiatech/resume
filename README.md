@@ -71,7 +71,11 @@ JOB
 
 Each run creates a unique `output/<UTC timestamp>-<command>-<random>/` directory. No previous application is silently overwritten. It includes the profile snapshot, original job text where supplied, model tag, and generated artifacts. Resume runs produce `resume.pdf` and `resume-wording.json`; tailored runs also produce match reports. Experience entries with supporting/partial evidence are selected; if none have evidence, the full history is retained with a warning. Other profile sections are retained, not silently rewritten to fit.
 
-The document uses one column, reverse chronology, experience before education, readable 10.5 pt body text, and no photograph. One page is the target; two is the maximum. Overflow fails with a diagnostic instead of shrinking the font or truncating content. Shorten the reviewed content or select a more focused profile if necessary.
+The document uses the [tech-focused-resume](https://typst.app/universe/package/tech-focused-resume) (MIT) and [exp-cover-letter](https://typst.app/universe/package/exp-cover-letter) (public domain) Typst packages. Their sources are fetched from the Typst package registry once during `task setup` and cached; document rendering then stays offline. Cover letters keep the package's sender/date/closing layout with the same font as the resume.
+
+Two-column header: name and contacts on the left, photo on the right. Set `photo: /path/to/image` in the profile, or just leave a `profile.jpeg` file in the project root. Note: Harvard's guidance recommends omitting photos; this is your explicit choice, and some US employers discard resumes with photos.
+
+One page is the target; two is the maximum. Overflow fails with a diagnostic instead of shrinking the font or truncating content. Shorten the reviewed content or select a more focused profile if necessary.
 
 ## Offline PDF readability check
 

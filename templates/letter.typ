@@ -1,10 +1,11 @@
+// Data-driven cover letter built on @preview/exp-cover-letter (public domain).
+// All letter text arrives via data.json as strings, never as Typst code.
+#import "@preview/exp-cover-letter:0.1.0": *
+
 #let data = json("data.json")
 #let p = data.profile
-#set document(title: p.name, author: p.name)
-#set page(paper: "a4", margin: (x: 22mm, y: 20mm))
-#set text(font: "Libertinus Serif", size: 10.5pt, lang: data.language)
-#set par(justify: false, leading: 0.65em, spacing: 12pt)
 
+// Render every supplied string as text, preserving explicit line breaks.
 #let plain(value) = {
   let lines = value.replace("\r\n", "\n").replace("\r", "\n").split("\n")
   for (index, item) in lines.enumerate() {
@@ -13,25 +14,27 @@
   }
 }
 
-#align(center)[
-  #text(19pt, weight: "bold", plain(p.name))
-  #v(3pt)
-  #for (index, contact) in data.contacts.enumerate() {
-    if index > 0 { [ #h(3pt)·#h(3pt) ] }
-    if contact.target != none {
-      link(contact.target, plain(contact.text))
-    } else {
-      plain(contact.text)
-    }
-  }
-]
-#v(14pt)
-#par(plain(data.labels.greeting))
+#show: letter.with(
+  font: "Libertinus Serif",
+  paper: "a4",
+  font-size: 11pt,
+  lang: data.language,
+  date: data.date,
+  closing: data.labels.closing,
+)
+
+#sender(
+  author: p.name,
+  location: if p.location == none { "" } else { p.location },
+  email: if p.email == none { "" } else { p.email },
+  phone: if p.phone == none { "" } else { p.phone },
+  linkedin: data.contacts.linkedin,
+  github: data.contacts.github,
+  personal-site: data.contacts.personal-site,
+)
+
+#recipient(greeting: data.labels.greeting)
+
 #for paragraph in data.paragraphs {
-  par(plain(paragraph))
+  plain(paragraph)
 }
-#block(breakable: false)[
-  #plain(data.labels.closing)
-  #linebreak()
-  #plain(p.name)
-]

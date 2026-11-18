@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import re
+from datetime import datetime
 from pathlib import Path
 import shutil
 import tempfile
@@ -16,18 +17,38 @@ import typst
 from .localization import labels
 
 
+_REGIONS = {"en": "us", "pt": "br"}
+
+
+def _contacts(profile: dict) -> dict:
+    """Map profile links onto the tech-focused-resume contact fields."""
+    fields = {
+        "email": profile.get("email") or "",
+        "phone": profile.get("phone") or "",
+        "location": profile.get("location") or "",
+        "github": "", "linkedin": "", "personal-site": "",
+    }
+    for value in profile.get("links", []):
+        url = value.split("://", 1)[-1].rstrip("/")
+        if "github.com/" in url:
+            fields["github"] = url.split("github.com/", 1)[1]
+        elif "linkedin.com/in/" in url:
+            fields["linkedin"] = url.split("linkedin.com/in/", 1)[1]
+        elif not fields["personal-site"]:
+            fields["personal-site"] = url
+    return fields
+
+
 def _data(profile: dict, language: str) -> dict:
     if not isinstance(language, str) or not re.fullmatch(r"[a-z]{2,3}", language):
         raise ValueError("Document language must be a two- or three-letter lowercase code.")
-    contacts = []
-    for field, prefix in (("email", "mailto:"), ("phone", "tel:"), ("location", "")):
-        value = profile.get(field)
-        if value:
-            contacts.append({"text": value, "target": prefix + value if prefix else None})
-    for value in profile.get("links", []):
-        target = value if value.startswith(("https://", "http://")) else "https://" + value
-        contacts.append({"text": value, "target": target})
-    return {"profile": profile, "contacts": contacts, "labels": labels(language), "language": language}
+    return {
+        "profile": profile,
+        "labels": labels(language),
+        "language": language,
+        "region": _REGIONS.get(language, language.upper()),
+        "contacts": _contacts(profile),
+    }
 
 
 def _render(data: dict, output: Path, template: str, max_pages: int) -> None:
@@ -41,6 +62,10 @@ def _render(data: dict, output: Path, template: str, max_pages: int) -> None:
         with tempfile.TemporaryDirectory(prefix=".resume-", dir=output.parent) as directory:
             root = Path(directory)
             shutil.copyfile(templates / template, root / "main.typ")
+            photo = data.pop("photo_source", None)
+            if photo:
+                shutil.copyfile(photo, root / photo.name)
+                data["photo"] = photo.name
             (root / "data.json").write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
             pdf = root / "document.pdf"
             typst.compile(str(root / "main.typ"), output=str(pdf), root=str(root))
@@ -79,6 +104,10 @@ def render_resume(
         experience = [entry for entry in experience if entry["id"] in selected]
     data = _data(profile, language)
     data["profile"] = dict(profile)
+    photo = profile.get("photo")
+    if not photo and Path("profile.jpeg").exists():
+        photo = "profile.jpeg"
+    data["photo_source"] = Path(photo) if photo else None
     # Dates have already been validated as YYYY or YYYY-MM by the profile model.
     data["profile"]["experience"] = sorted(
         experience,
@@ -104,4 +133,5 @@ def render_letter(
         raise ValueError("A cover letter requires non-empty text paragraphs.")
     data = _data(profile, language)
     data["paragraphs"] = paragraphs
+    data["date"] = datetime.now().strftime("%B %d, %Y")
     _render(data, output, "letter.typ", max_pages=1)

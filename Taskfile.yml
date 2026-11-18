@@ -13,6 +13,7 @@ tasks:
     desc: Install Python dependencies and download the local model (internet required once)
     cmds:
       - uv sync --dev
+      - uv run --frozen python scripts/warm_typst.py
       - docker compose pull
       - task: model-up
       - docker compose exec -T ollama ollama pull {{.MODEL | shellQuote}}
