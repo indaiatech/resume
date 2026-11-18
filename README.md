@@ -21,6 +21,16 @@ task model-down
 
 An existing local Ollama can be used instead: skip Compose startup, pull the same model yourself, and set `OLLAMA_URL=http://127.0.0.1:11434` if needed. Only literal loopback HTTP origins are accepted; redirects and environment HTTP proxies are disabled. To use a different installed model, export `OLLAMA_MODEL` before setup and processing. Model quality is not interchangeable.
 
+## Start from the example
+
+```bash
+task profile                 # copies examples/profile.yaml to profile.yaml with reviewed: false
+task profile PROFILE=another.yaml
+task clean                   # lists output/ artifacts and asks before deleting them
+```
+
+`task profile` never overwrites an existing file. Review the copied profile and set `reviewed: true` before generating documents. To import real data instead, see the next section.
+
 ## Import and review
 
 ```bash

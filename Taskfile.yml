@@ -18,6 +18,32 @@ tasks:
       - task: model-up
       - docker compose exec -T ollama ollama pull {{.MODEL | shellQuote}}
 
+  clean:
+    desc: List generated run artifacts under output/ and delete them after confirmation
+    cmds:
+      - python3 scripts/clean_outputs.py
+
+  profile:
+    desc: Copy the synthetic example into PROFILE (default profile.yaml) marked unreviewed
+    cmds:
+      - |
+        PROFILE_TARGET={{.PROFILE | shellQuote}} python3 - <<'PY'
+        import os, sys
+        from pathlib import Path
+        source = Path("examples/profile.yaml")
+        target = Path(os.environ.get("PROFILE_TARGET") or "profile.yaml")
+        if target.exists():
+            sys.exit(f"Refusing to overwrite existing {target}")
+        text = source.read_text(encoding="utf-8")
+        marked = text.replace("reviewed: true", "reviewed: false", 1)
+        if marked == text:
+            sys.exit("examples/profile.yaml lacks the reviewed marker; fix the example instead")
+        handle = os.fdopen(os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), "w", encoding="utf-8")
+        with handle:
+            handle.write(marked)
+        print(f"Created {target} with reviewed=false; review it against your real history before generating documents")
+        PY
+
   model-up:
     desc: Start local Ollama, bound only to loopback
     cmds:
