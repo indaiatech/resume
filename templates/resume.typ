@@ -14,14 +14,13 @@
   ),
   style: (
     accent-color: "#000000", font: "Libertinus Serif", paper: "a4", font-size: 10pt,
-    margin: (top: 0.45in, bottom: 0.4in, left: 0.5in, right: 0.5in),
+    margin: (top: 0.35in, bottom: 0.35in, left: 0.4in, right: 0.4in),
   ),
   config: (lang: data.language, region: data.region),
   document-metadata: (title: p.name, description: "Resume", keywords: "cv"),
 )
 // Tighter rhythm keeps the two-page limit with full experience history.
 #set list(spacing: 0.4em)
-#set par(spacing: 4pt)
 #show heading: set block(above: 7pt, below: 2pt)
 
 // Two-column header: identity and contacts on the left, photo on the right.
