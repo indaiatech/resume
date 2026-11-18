@@ -28,13 +28,20 @@
   column-gutter: 14pt,
   block[
     #author-title(author: (name: p.name, headline: if p.at("headline", default: none) == none { "" } else { p.headline }, position: left, uppercase: false), font-size: 10pt)
+    #v(0.3em)
+    // Phone and LinkedIn sit under the headline; other contacts stack on the right.
+    #contact-item(data.contacts.phone, icon-name: "phone", show-icons: true)
+    #h(0.4em)
+    #sym.dot.c
+    #h(0.4em)
+    #contact-item(data.contacts.linkedin, prefix: "linkedin.com/in/", link-type: "https://", icon-name: "linkedin", show-icons: true)
   ],
   if data.at("photo", default: none) != none { image(data.photo, height: 96pt) },
   block[
-    // One contact per line, right-aligned; same fields/icons as the package header.
+    // Remaining contacts one per line, right-aligned; same fields/icons as the package header.
     #for field in contact-fields {
       let value = data.contacts.at(field.key, default: "")
-      if value != "" {
+      if value != "" and field.key not in ("phone", "linkedin") {
         contact-item(value, prefix: field.at("prefix", default: ""), link-type: field.at("link-type", default: ""), icon-name: field.icon, show-icons: true)
         linebreak()
       }
