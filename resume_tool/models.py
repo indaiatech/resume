@@ -54,6 +54,7 @@ class Profile(Record):
     links: list[str] = Field(default_factory=list)
     photo: str | None = None
     show_photo: bool = False
+    headline: str | None = None
     summary: str | None = None
     experience: list[Experience] = Field(default_factory=list)
     education: list[Education] = Field(default_factory=list)

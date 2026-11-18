@@ -109,7 +109,8 @@ def import_profile(pdf: Path, destination: Path) -> None:
     dump(folder / "source.txt", text)
     result = infer(ImportResult, (
         "Extract a complete profile from this LinkedIn PDF text. Copy descriptive facts "
-        "verbatim from the text, including name, companies, titles, bullets, education, skills, "
+        "verbatim from the text, including the professional headline line under the name "
+        "(e.g. Tech Lead | AI Engineer) as headline, companies, titles, bullets, education, skills, "
         "languages and certifications. Capture each certification as name, issuer, "
         "issued and expires dates (YYYY-MM), and credential_id when the text shows them. "
         "Do not summarize or translate. Use null/empty lists "

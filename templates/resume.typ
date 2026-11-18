@@ -27,7 +27,7 @@
   align: (left, top + right),
   column-gutter: 14pt,
   block[
-    #author-title(author: (name: p.name, headline: "", position: left, uppercase: false), font-size: 10pt)
+    #author-title(author: (name: p.name, headline: if p.at("headline", default: none) == none { "" } else { p.headline }, position: left, uppercase: false), font-size: 10pt)
     #v(0.3em)
     #contact-info(config: (info: data.contacts, show-icons: true, show-sensitive-info: true, position: left, gap: 0.4em))
   ],
