@@ -21,7 +21,7 @@
 )
 // Tighter rhythm keeps the two-page limit with full experience history.
 #set list(spacing: 0.4em)
-#show heading: set block(above: 8pt, below: 8pt)
+#show heading: set block(above: 16pt, below: 8pt)
 // Own heading rendering: the package pulls the underline up with v(-1em),
 // which cuts through text in the Libertinus font metrics.
 #show heading.where(level: 1): it => block[
