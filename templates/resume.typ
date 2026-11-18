@@ -25,7 +25,7 @@
 // heading wrapper cannot double the underline or pull it into the text.
 #let mysection(title, body) = {
   // Bottom border hugs the text; a line() element would drift with paragraph spacing.
-  block(above: 16pt, below: 6pt, width: 100%, stroke: (bottom: 0.5pt))[
+  block(above: 16pt, below: 6pt, width: 100%, stroke: (bottom: 0.5pt), inset: (bottom: 3pt))[
     #set text(size: 11pt, weight: "bold")
     #smallcaps(title)
   ]
