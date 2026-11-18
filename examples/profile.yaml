@@ -14,6 +14,7 @@ experience:
     start: '2021-03'
     end: null
     location: Sao Paulo, Brazil
+    modality: hybrid # remote | hybrid | onsite (optional; localized automatically)
     bullets:
       - Built Python APIs with FastAPI and PostgreSQL.
       - Reduced API response time by 30 percent through query optimization.

@@ -52,7 +52,12 @@
         company: entry.company,
         title: entry.title,
         dates: entry-dates(entry),
-        location: if p.at("location", default: none) == none { "" } else { p.at("location", default: none) },
+        // The package renders "modality — location"; when there is no modality,
+        // carry the location in its slot to avoid a leading dash.
+        modality: if entry.at("modality", default: none) == none {
+          if entry.at("location", default: none) == none { "" } else { entry.location }
+        } else { labels.modalities.at(entry.modality) },
+        location: if entry.at("modality", default: none) == none { "" } else { if entry.at("location", default: none) == none { "" } else { entry.location } },
       )[
         #(if entry.bullets.len() > 0 { list(..entry.bullets.map(bullet => plain(bullet))) } else { [] })
       ]

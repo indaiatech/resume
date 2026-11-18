@@ -17,6 +17,7 @@ class Experience(Record):
     start: str = Field(pattern=r"^\d{4}(-(?:0[1-9]|1[0-2]))?$")
     end: str | None = Field(default=None, pattern=r"^\d{4}(-(?:0[1-9]|1[0-2]))?$")
     location: str | None = None
+    modality: Literal["remote", "hybrid", "onsite"] | None = None
     bullets: list[str] = Field(default_factory=list)
 
     @model_validator(mode="after")
