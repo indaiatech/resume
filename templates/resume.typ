@@ -21,7 +21,7 @@
 )
 // Tighter rhythm keeps the two-page limit with full experience history.
 #set list(spacing: 0.4em)
-#show heading: set block(above: 7pt, below: 2pt)
+#show heading: set block(above: 7pt, below: 14pt)
 
 // Two-column header: identity and contacts on the left, photo on the right.
 // The package header above is intentionally empty; this grid replaces it.
