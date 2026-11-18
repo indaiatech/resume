@@ -103,10 +103,7 @@
         certificates(
           name: plain(entry.name),
           issuer: if entry.at("issuer", default: none) == none { "" } else { entry.issuer },
-          date: if entry.at("issued", default: none) == none and entry.at("expires", default: none) == none { "" } else { dates-helper(
-            start-date: if entry.at("issued", default: none) == none { "?" } else { entry.issued },
-            end-date: if entry.at("expires", default: none) == none { if entry.at("issued", default: none) == none { "" } else { labels.current } } else { entry.expires },
-          ) },
+          date: if entry.at("issued", default: none) == none and entry.at("expires", default: none) == none { "" } else { if entry.at("expires", default: none) == none { if entry.at("issued", default: none) == none { "" } else { entry.issued } } else { dates-helper(start-date: entry.issued, end-date: entry.expires) } },
         )
       }
     }
