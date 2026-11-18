@@ -264,9 +264,13 @@ def main() -> int:
                         selection = sorted(ids)
                     else:
                         print("No experience evidence selected; retaining the full experience history.")
-                from .drafting import draft_resume
-                wording = draft_resume(profile, language, selection)
-                dump(folder / "resume-wording.json", wording)
+                    from .drafting import draft_resume
+                    wording = draft_resume(profile, language, selection)
+                    dump(folder / "resume-wording.json", wording)
+                else:
+                    # No job to adapt to: keep the reviewed bullets verbatim, no model call.
+                    wording = profile.model_dump()
+                from .render import render_resume
                 render_resume(wording, folder / "resume.pdf", language, selection)
             print(f"Artifacts: {folder}")
     except (ValueError, OSError, KeyError, ValidationError, yaml.YAMLError, fitz.FileDataError) as exc:
