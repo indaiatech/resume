@@ -23,15 +23,23 @@
 // Two-column header: identity and contacts on the left, photo on the right.
 // The package header above is intentionally empty; this grid replaces it.
 #grid(
-  columns: (1fr, auto),
-  align: (left, top + right),
+  columns: (1fr, auto, auto),
+  align: (left, right + top, right + top),
   column-gutter: 14pt,
   block[
     #author-title(author: (name: p.name, headline: if p.at("headline", default: none) == none { "" } else { p.headline }, position: left, uppercase: false), font-size: 10pt)
-    #v(0.3em)
-    #contact-info(config: (info: data.contacts, show-icons: true, show-sensitive-info: true, position: left, gap: 0.4em))
   ],
   if data.at("photo", default: none) != none { image(data.photo, height: 96pt) },
+  block[
+    // One contact per line, right-aligned; same fields/icons as the package header.
+    #for field in contact-fields {
+      let value = data.contacts.at(field.key, default: "")
+      if value != "" {
+        contact-item(value, prefix: field.at("prefix", default: ""), link-type: field.at("link-type", default: ""), icon-name: field.icon, show-icons: true)
+        linebreak()
+      }
+    }
+  ],
 )
 #v(-0.5em)
 
