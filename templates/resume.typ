@@ -43,14 +43,24 @@
   text(fill: luma(60%), size: 10pt * 1.5)[#if p.at("headline", default: none) == none { [] } else { p.headline }],
 )
 #v(0.35em)
-// Contacts spread across the line: phone left, location right, equal gaps between.
+// Contacts spread across the line: every supplied block shares the width,
+// first left, last right, middles centered. With all four blocks the original
+// proportions (wider email column) are preserved.
+#let contact-definitions = (
+  (value: data.contacts.phone, align: left, cell: contact-item(data.contacts.phone, icon-name: "phone", show-icons: true)),
+  (value: data.contacts.linkedin, align: center, cell: contact-item(data.contacts.linkedin, prefix: "linkedin.com/in/", link-type: "https://", icon-name: "linkedin", show-icons: true)),
+  (value: data.contacts.email, align: center, cell: contact-item(data.contacts.email, prefix: "", link-type: "mailto:", icon-name: "envelope", show-icons: true)),
+  (value: data.contacts.location, align: right, cell: contact-item(data.contacts.location)),
+)
+#let present-contacts = contact-definitions.filter(entry => entry.value != "")
+#let contact-columns = if present-contacts.len() == 4 { (1fr, 1fr, 1.5fr, 1fr) } else { (1fr,) * present-contacts.len() }
+#let contact-aligns = if present-contacts.len() == 1 { (center,) } else {
+  range(present-contacts.len()).map(index => if index == 0 { left } else if index == present-contacts.len() - 1 { right } else { center })
+}
 #grid(
-  columns: (1fr, 1fr, 1.5fr, 1fr),
-  align: (left, center, center, right),
-  contact-item(data.contacts.phone, icon-name: "phone", show-icons: true),
-  contact-item(data.contacts.linkedin, prefix: "linkedin.com/in/", link-type: "https://", icon-name: "linkedin", show-icons: true),
-  contact-item(data.contacts.email, prefix: "", link-type: "mailto:", icon-name: "envelope", show-icons: true),
-  contact-item(data.contacts.location),
+  columns: contact-columns,
+  align: contact-aligns,
+  ..present-contacts.map(entry => entry.cell),
 )
 
 // Render every supplied string as text, preserving explicit line breaks.
