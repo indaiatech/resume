@@ -42,26 +42,15 @@
   text(fill: luma(60%), size: 10pt * 1.5)[#if p.at("headline", default: none) == none { [] } else { p.headline }],
 )
 #v(0.35em)
-// Contacts spread across the line: phone pinned left, location pinned right,
-// the rest sharing the space evenly between them.
-#block(width: 100%)[
-  #grid(
-    columns: (auto, 1fr, auto),
-    align: (left, center, right),
-    contact-item(data.contacts.phone, icon-name: "phone", show-icons: true),
-    {
-      h(0.4em)
-      sym.dot.c
-      h(0.4em)
-      contact-item(data.contacts.linkedin, prefix: "linkedin.com/in/", link-type: "https://", icon-name: "linkedin", show-icons: true)
-      h(0.4em)
-      sym.dot.c
-      h(0.4em)
-      contact-item(data.contacts.email, prefix: "", link-type: "mailto:", icon-name: "envelope", show-icons: true)
-    },
-    contact-item(data.contacts.location),
-  )
-]
+// Contacts spread across the line: phone left, location right, equal gaps between.
+#grid(
+  columns: (1fr, 1fr, 1.5fr, 1fr),
+  align: (left, center, center, right),
+  contact-item(data.contacts.phone, icon-name: "phone", show-icons: true),
+  contact-item(data.contacts.linkedin, prefix: "linkedin.com/in/", link-type: "https://", icon-name: "linkedin", show-icons: true),
+  contact-item(data.contacts.email, prefix: "", link-type: "mailto:", icon-name: "envelope", show-icons: true),
+  contact-item(data.contacts.location),
+)
 
 // Render every supplied string as text, preserving explicit line breaks.
 #let plain(value) = {
