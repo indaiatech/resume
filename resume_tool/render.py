@@ -62,10 +62,6 @@ def _render(data: dict, output: Path, template: str, max_pages: int) -> None:
         with tempfile.TemporaryDirectory(prefix=".resume-", dir=output.parent) as directory:
             root = Path(directory)
             shutil.copyfile(templates / template, root / "main.typ")
-            photo = data.pop("photo_source", None)
-            if photo:
-                shutil.copyfile(photo, root / photo.name)
-                data["photo"] = photo.name
             (root / "data.json").write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
             pdf = root / "document.pdf"
             typst.compile(str(root / "main.typ"), output=str(pdf), root=str(root))
@@ -104,10 +100,6 @@ def render_resume(
         experience = [entry for entry in experience if entry["id"] in selected]
     data = _data(profile, language)
     data["profile"] = dict(profile)
-    photo = profile.get("photo")
-    if not photo and Path("profile.jpeg").exists():
-        photo = "profile.jpeg"
-    data["photo_source"] = Path(photo) if photo and profile.get("show_photo", False) else None
     # Dates have already been validated as YYYY or YYYY-MM by the profile model.
     data["profile"]["experience"] = sorted(
         experience,

@@ -19,34 +19,38 @@
   config: (lang: data.language, region: data.region),
   document-metadata: (title: p.name, description: "Resume", keywords: "cv"),
 )
+// Tighter rhythm keeps the two-page limit with full experience history.
+#set list(spacing: 0.4em)
+#set par(spacing: 4pt)
+#show heading: set block(above: 7pt, below: 2pt)
 
 // Two-column header: identity and contacts on the left, photo on the right.
 // The package header above is intentionally empty; this grid replaces it.
 #grid(
-  columns: (1fr, auto, auto),
-  align: (left, right + top, right + top),
+  columns: (1fr, auto),
+  align: (left, bottom + right),
   column-gutter: 14pt,
   block[
-    #author-title(author: (name: p.name, headline: if p.at("headline", default: none) == none { "" } else { p.headline }, position: left, uppercase: false), font-size: 10pt)
-    #v(0.3em)
-    // Phone and LinkedIn sit under the headline; other contacts stack on the right.
+    #author-title(author: (name: p.name, headline: "", position: left, uppercase: false), font-size: 10pt)
+    #v(0.4em)
+    // All contacts on one line: phone · linkedin · email · location.
     #contact-item(data.contacts.phone, icon-name: "phone", show-icons: true)
     #h(0.4em)
     #sym.dot.c
     #h(0.4em)
     #contact-item(data.contacts.linkedin, prefix: "linkedin.com/in/", link-type: "https://", icon-name: "linkedin", show-icons: true)
+    #h(0.4em)
+    #sym.dot.c
+    #h(0.4em)
+    #contact-item(data.contacts.email, prefix: "", link-type: "mailto:", icon-name: "envelope", show-icons: true)
+    #h(0.4em)
+    #sym.dot.c
+    #h(0.4em)
+    #contact-item(data.contacts.location)
   ],
-  if data.at("photo", default: none) != none { image(data.photo, height: 96pt) },
-  block[
-    // Remaining contacts one per line, right-aligned; same fields/icons as the package header.
-    #for field in contact-fields {
-      let value = data.contacts.at(field.key, default: "")
-      if value != "" and field.key not in ("phone", "linkedin") {
-        contact-item(value, prefix: field.at("prefix", default: ""), link-type: field.at("link-type", default: ""), icon-name: field.icon, show-icons: true)
-        linebreak()
-      }
-    }
-  ],
+  block(width: 100%, align(right)[
+    #text(fill: luma(60%), size: 10pt * 1.5)[#if p.at("headline", default: none) == none { [] } else { p.headline }]
+  ]),
 )
 #v(-0.5em)
 
@@ -111,16 +115,11 @@
 
 #if p.certifications.len() > 0 {
   section(labels.certifications)[
-    #for entry in p.certifications {
-      if type(entry) == str {
-        certificates(name: plain(entry))
-      } else {
-        certificates(
-          name: plain(entry.name),
-          issuer: if entry.at("issuer", default: none) == none { "" } else { entry.issuer },
-          date: if entry.at("issued", default: none) == none and entry.at("expires", default: none) == none { "" } else { if entry.at("expires", default: none) == none { if entry.at("issued", default: none) == none { "" } else { entry.issued } } else { dates-helper(start-date: entry.issued, end-date: entry.expires) } },
-        )
-      }
+    #for (index, entry) in p.certifications.enumerate() {
+      if index > 0 { linebreak() }
+      let date = if type(entry) == str { "" } else { if entry.at("expires", default: none) == none { if entry.at("issued", default: none) == none { "" } else { entry.issued } } else { dates-helper(start-date: entry.issued, end-date: entry.expires) } }
+      let parts = if type(entry) == str { (entry,) } else { (entry.name, ..if entry.at("issuer", default: none) == none { () } else { (entry.issuer,) }, date) }
+      plain(parts.filter(part => part != "").join(" · "))
     }
   ]
 }
