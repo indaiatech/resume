@@ -33,30 +33,28 @@
 
 // Two-column header: identity and contacts on the left, photo on the right.
 // The package header above is intentionally empty; this grid replaces it.
+// First line: name left, role right in gray. Contacts on one line below.
 #grid(
   columns: (1fr, auto),
   align: (left, bottom + right),
   column-gutter: 14pt,
-  block[
-    #author-title(author: (name: p.name, headline: "", position: left, uppercase: false), font-size: 10pt)
-    #text(fill: luma(60%), size: 10pt * 1.5)[#if p.at("headline", default: none) == none { [] } else { p.headline }]
-    #v(0.4em)
-    // All contacts on one line: phone · linkedin · email · location.
-    #contact-item(data.contacts.phone, icon-name: "phone", show-icons: true)
-    #h(0.4em)
-    #sym.dot.c
-    #h(0.4em)
-    #contact-item(data.contacts.linkedin, prefix: "linkedin.com/in/", link-type: "https://", icon-name: "linkedin", show-icons: true)
-    #h(0.4em)
-    #sym.dot.c
-    #h(0.4em)
-    #contact-item(data.contacts.email, prefix: "", link-type: "mailto:", icon-name: "envelope", show-icons: true)
-    #h(0.4em)
-    #sym.dot.c
-    #h(0.4em)
-    #contact-item(data.contacts.location)
-  ],
+  author-title(author: (name: p.name, headline: "", position: left, uppercase: false), font-size: 10pt),
+  text(fill: luma(60%), size: 10pt * 1.5)[#if p.at("headline", default: none) == none { [] } else { p.headline }],
 )
+#v(0.35em)
+#contact-item(data.contacts.phone, icon-name: "phone", show-icons: true)
+#h(0.4em)
+#sym.dot.c
+#h(0.4em)
+#contact-item(data.contacts.linkedin, prefix: "linkedin.com/in/", link-type: "https://", icon-name: "linkedin", show-icons: true)
+#h(0.4em)
+#sym.dot.c
+#h(0.4em)
+#contact-item(data.contacts.email, prefix: "", link-type: "mailto:", icon-name: "envelope", show-icons: true)
+#h(0.4em)
+#sym.dot.c
+#h(0.4em)
+#contact-item(data.contacts.location)
 
 // Render every supplied string as text, preserving explicit line breaks.
 #let plain(value) = {
@@ -106,7 +104,9 @@
     if type(group) == str {
       [- #plain(group)]
     } else {
-      [- *#group.label:* #plain(group.items.join(", "))]
+      // Label column and items column: items never wrap below the category.
+      grid(columns: (9em, 1fr), gutter: 0.8em, align(left)[*#group.label:*], align(left, plain(group.items.join(", "))))
+      v(0.4em)
     }
   }
 ] }
@@ -117,7 +117,7 @@
 ] }
 
 #if p.skills.len() > 0 and p.languages.len() > 0 {
-  grid-section(columns: (1fr, 1fr), gutter: 2em, sections: (
+  grid-section(columns: (1.7fr, 1fr), gutter: 2em, sections: (
     section(labels.skills)[#skill-list],
     section(labels.languages)[#language-list],
   ))
