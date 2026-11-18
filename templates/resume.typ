@@ -32,6 +32,7 @@
   column-gutter: 14pt,
   block[
     #author-title(author: (name: p.name, headline: "", position: left, uppercase: false), font-size: 10pt)
+    #text(fill: luma(60%), size: 10pt * 1.5)[#if p.at("headline", default: none) == none { [] } else { p.headline }]
     #v(0.4em)
     // All contacts on one line: phone · linkedin · email · location.
     #contact-item(data.contacts.phone, icon-name: "phone", show-icons: true)
@@ -48,11 +49,7 @@
     #h(0.4em)
     #contact-item(data.contacts.location)
   ],
-  block(width: 100%, align(right)[
-    #text(fill: luma(60%), size: 10pt * 1.5)[#if p.at("headline", default: none) == none { [] } else { p.headline }]
-  ]),
 )
-#v(-0.5em)
 
 // Render every supplied string as text, preserving explicit line breaks.
 #let plain(value) = {
