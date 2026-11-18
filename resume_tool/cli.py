@@ -110,7 +110,9 @@ def import_profile(pdf: Path, destination: Path) -> None:
     result = infer(ImportResult, (
         "Extract a complete profile from this LinkedIn PDF text. Copy descriptive facts "
         "verbatim from the text, including name, companies, titles, bullets, education, skills, "
-        "languages and certifications. Do not summarize or translate. Use null/empty lists "
+        "languages and certifications. Capture each certification as name, issuer, "
+        "issued and expires dates (YYYY-MM), and credential_id when the text shows them. "
+        "Do not summarize or translate. Use null/empty lists "
         "for absent fields. Dates only YYYY or YYYY-MM; end null means current. "
         "Never guess missing dates: omit entries with unknown start dates and put their "
         "full text in warnings for manual recovery. IDs must be unique lowercase slugs. "
@@ -129,7 +131,8 @@ def import_profile(pdf: Path, destination: Path) -> None:
     profile.email = profile.email or next(iter(re.findall(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+", normalized(text))), None)
     # A copied fact must actually occur in the PDF; normalized dates are reviewed separately.
     values = [profile.name, profile.email, profile.phone, profile.location, profile.summary]
-    values += profile.links + profile.skills + profile.languages + profile.certifications
+    values += profile.links + profile.skills + profile.languages
+    values += [c if isinstance(c, str) else c.name for c in profile.certifications]
     for entry in profile.experience:
         values += [entry.company, entry.title, entry.location, *entry.bullets]
     for entry in profile.education:

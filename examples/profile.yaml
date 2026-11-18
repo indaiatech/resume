@@ -40,4 +40,9 @@ skills:
 languages:
   - Portuguese (native)
   - English (professional)
-certifications: []
+certifications:
+  - name: SAFe 4.0 Certified Practitioner
+    issuer: Scaled Agile, Inc.
+    issued: '2016-07'
+    expires: '2017-07'
+    credential_id: 'EXAMPLE-0001'

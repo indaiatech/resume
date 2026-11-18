@@ -28,6 +28,14 @@ class Experience(Record):
         return self
 
 
+class Certification(Record):
+    name: str = Field(min_length=1)
+    issuer: str | None = None
+    issued: str | None = Field(default=None, pattern=r"^\d{4}(-(?:0[1-9]|1[0-2]))?$")
+    expires: str | None = Field(default=None, pattern=r"^\d{4}(-(?:0[1-9]|1[0-2]))?$")
+    credential_id: str | None = None
+
+
 class Education(Record):
     id: str = Field(pattern=r"^[a-z][a-z0-9-]*$")
     institution: str = Field(min_length=1)
@@ -50,7 +58,7 @@ class Profile(Record):
     education: list[Education] = Field(default_factory=list)
     skills: list[str] = Field(default_factory=list)
     languages: list[str] = Field(default_factory=list)
-    certifications: list[str] = Field(default_factory=list)
+    certifications: list[Certification | str] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def unique_ids(self):
@@ -107,9 +115,21 @@ def facts(profile: Profile) -> dict[str, str]:
             result[f"experience:{item.id}:bullet:{i}"] = bullet
     for item in profile.education:
         result[f"education:{item.id}"] = f"{item.degree} — {item.institution}"
-    for field in ("skills", "languages", "certifications"):
+    for field in ("skills", "languages"):
         for i, value in enumerate(getattr(profile, field)):
             result[f"{field}:{i}"] = value
+    for i, item in enumerate(profile.certifications):
+        if isinstance(item, str):
+            result[f"certifications:{i}"] = item
+            continue
+        parts = [item.name]
+        if item.issuer:
+            parts.append(item.issuer)
+        if item.issued or item.expires:
+            parts.append(f"{item.issued or '?'} – {item.expires or 'no expiration'}")
+        if item.credential_id:
+            parts.append(f"credential {item.credential_id}")
+        result[f"certifications:{i}"] = "; ".join(parts)
     return result
 
 

@@ -92,7 +92,18 @@
 #if p.certifications.len() > 0 {
   section(labels.certifications)[
     #for entry in p.certifications {
-      certificates(name: plain(entry))
+      if type(entry) == str {
+        certificates(name: plain(entry))
+      } else {
+        certificates(
+          name: plain(entry.name),
+          issuer: if entry.at("issuer", default: none) == none { "" } else { entry.issuer },
+          date: if entry.at("issued", default: none) == none and entry.at("expires", default: none) == none { "" } else { dates-helper(
+            start-date: if entry.at("issued", default: none) == none { "?" } else { entry.issued },
+            end-date: if entry.at("expires", default: none) == none { if entry.at("issued", default: none) == none { "" } else { labels.current } } else { entry.expires },
+          ) },
+        )
+      }
     }
   ]
 }
