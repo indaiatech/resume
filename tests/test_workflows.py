@@ -105,6 +105,24 @@ def test_resume_wording_rejects_changed_metrics(monkeypatch, profile):
         drafting.draft_resume(profile, "en", None)
 
 
+def test_photo_requires_explicit_opt_in(tmp_path, profile):
+    photo = tmp_path / "me.png"
+    pixmap = fitz.Pixmap(fitz.csRGB, fitz.IRect(0, 0, 8, 8))
+    pixmap.set_rect(pixmap.irect, (200, 200, 200))
+    pixmap.save(photo)
+    data = profile.model_dump()
+    data["photo"] = str(photo)
+    no_photo = tmp_path / "off.pdf"
+    render_resume(data, no_photo)
+    with fitz.open(no_photo) as pdf:
+        assert not pdf[0].get_images()
+    data["show_photo"] = True
+    with_photo = tmp_path / "on.pdf"
+    render_resume(data, with_photo)
+    with fitz.open(with_photo) as pdf:
+        assert pdf[0].get_images()
+
+
 def test_two_column_pdf_is_extracted_column_by_column(tmp_path):
     source = tmp_path / "twocol.pdf"
     with fitz.open() as pdf:

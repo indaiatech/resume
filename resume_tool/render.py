@@ -107,7 +107,7 @@ def render_resume(
     photo = profile.get("photo")
     if not photo and Path("profile.jpeg").exists():
         photo = "profile.jpeg"
-    data["photo_source"] = Path(photo) if photo else None
+    data["photo_source"] = Path(photo) if photo and profile.get("show_photo", False) else None
     # Dates have already been validated as YYYY or YYYY-MM by the profile model.
     data["profile"]["experience"] = sorted(
         experience,

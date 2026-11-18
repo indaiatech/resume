@@ -31,7 +31,7 @@
     #v(0.3em)
     #contact-info(config: (info: data.contacts, show-icons: true, show-sensitive-info: true, position: left, gap: 0.4em))
   ],
-  if data.photo != none { image(data.photo, height: 96pt) },
+  if data.at("photo", default: none) != none { image(data.photo, height: 96pt) },
 )
 #v(-0.5em)
 

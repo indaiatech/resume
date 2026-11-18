@@ -44,6 +44,7 @@ class Profile(Record):
     location: str | None = None
     links: list[str] = Field(default_factory=list)
     photo: str | None = None
+    show_photo: bool = False
     summary: str | None = None
     experience: list[Experience] = Field(default_factory=list)
     education: list[Education] = Field(default_factory=list)
