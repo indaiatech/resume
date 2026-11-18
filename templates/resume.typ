@@ -24,7 +24,7 @@
 // Section title rendered directly (no heading element) so the package's
 // heading wrapper cannot double the underline or pull it into the text.
 #let mysection(title, body) = {
-  block(above: 16pt, below: 8pt)[
+  block(above: 16pt, below: 4pt)[
     #set text(size: 11pt, weight: "bold")
     #smallcaps(title)
     #v(3pt)
