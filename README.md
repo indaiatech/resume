@@ -81,6 +81,26 @@ JOB
 
 Each run creates a unique `output/<UTC timestamp>-<command>-<random>/` directory. No previous application is silently overwritten. It includes the profile snapshot, original job text where supplied, model tag, and generated artifacts. Resume runs produce `resume.pdf` and `resume-wording.json`; tailored runs also produce match reports. Experience entries with supporting/partial evidence are selected; if none have evidence, the full history is retained with a warning. Other profile sections are retained, not silently rewritten to fit.
 
+`profile.yaml` is the complete source of truth, including details intended for LinkedIn.
+The resume displays its `summary` above Experience. Add `collapse: true` to an
+experience entry to show only its company, title, and dates under Earlier Experience
+(Experiência anterior in Portuguese). Omitted or `false` keeps the full entry.
+Bullets remain in the profile, saved snapshots, and matching evidence; collapse
+affects resume presentation only and never deletes or rewrites the source YAML.
+Job-tailored selection still determines which entries appear before collapse is applied.
+
+```yaml
+experience:
+  - id: earlier-role
+    company: Example Company
+    title: Developer
+    start: '2009'
+    end: '2011'
+    collapse: true
+    bullets:
+      - Full project details remain available for LinkedIn and matching.
+```
+
 The document uses the [tech-focused-resume](https://typst.app/universe/package/tech-focused-resume) (MIT) and [exp-cover-letter](https://typst.app/universe/package/exp-cover-letter) (public domain) Typst packages. Their sources are fetched from the Typst package registry once during `task setup` and cached; document rendering then stays offline. Cover letters keep the package's sender/date/closing layout with the same font as the resume.
 
 Two-column header: name and contacts on the left, photo on the right. Set `photo: /path/to/image` in the profile, or just leave a `profile.jpeg` file in the project root. Note: Harvard's guidance recommends omitting photos; this is your explicit choice, and some US employers discard resumes with photos.

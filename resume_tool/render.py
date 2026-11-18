@@ -89,7 +89,8 @@ def render_resume(
     """Write a one-column resume, rejecting output longer than two pages.
 
     Selection contains experience IDs only. The existing output is preserved if
-    compilation or the page-limit check fails. Summary text is intentionally omitted.
+    compilation or page-limit check fails. Collapsed entries retain their source
+    bullets but render only company, title, and dates under Earlier Experience.
     """
     experience = profile.get("experience", [])
     if selection is not None:

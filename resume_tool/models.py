@@ -19,6 +19,7 @@ class Experience(Record):
     location: str | None = None
     modality: Literal["remote", "hybrid", "onsite"] | None = None
     bullets: list[str] = Field(default_factory=list)
+    collapse: bool = False
 
     @model_validator(mode="after")
     def chronological(self):

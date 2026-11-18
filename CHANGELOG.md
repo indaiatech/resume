@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Preserve complete profile details while grouping `collapse: true` roles under Earlier Experience in resumes.
+- Render the profile summary above Experience and include it in job-tailored translation with numeric-fact checks.
+
 ## 0.1.0
 
 - Import text-based LinkedIn PDFs into a review-gated YAML profile with source text and ambiguity warnings.

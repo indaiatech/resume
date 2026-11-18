@@ -19,7 +19,7 @@
   config: (lang: data.language, region: data.region),
   document-metadata: (title: p.name, description: "Resume", keywords: "cv"),
 )
-// Tighter rhythm keeps the two-page limit with full experience history.
+// Consistent list rhythm; profile metadata controls which roles show details.
 #set list(spacing: 0.4em)
 // Section title rendered directly (no heading element) so the package's
 // heading wrapper cannot double the underline or pull it into the text.
@@ -73,9 +73,16 @@
 }
 #let entry-dates(entry) = dates-helper(start-date: entry.start, end-date: if entry.end == none { labels.current } else { entry.end })
 
-#if p.experience.len() > 0 {
+#if p.at("summary", default: none) != none and p.summary != "" {
+  mysection(labels.summary)[#plain(p.summary)]
+}
+
+#let detailed-experience = p.experience.filter(entry => not entry.at("collapse", default: false))
+#let earlier-experience = p.experience.filter(entry => entry.at("collapse", default: false))
+
+#if detailed-experience.len() > 0 {
   mysection(labels.experience)[
-    #for entry in p.experience {
+    #for entry in detailed-experience {
       // Same two-by-two structure as the package's work(), so the
       // modality—location line can be styled locally.
       let modality = if entry.at("modality", default: none) == none {
@@ -91,6 +98,20 @@
       if entry.bullets.len() > 0 {
         block(above: 6pt, below: 11pt, pad(left: 1.5em, list(indent: 0.25em, spacing: 0.8em, ..entry.bullets.map(bullet => plain(bullet)))))
       }
+    }
+  ]
+}
+
+#if earlier-experience.len() > 0 {
+  mysection(labels.earlier_experience)[
+    #for entry in earlier-experience {
+      grid(
+        columns: (1fr, auto),
+        column-gutter: 1em,
+        align(left)[#strong(plain(entry.company)) — #plain(entry.title)],
+        align(right, entry-dates(entry)),
+      )
+      v(3pt)
     }
   ]
 }

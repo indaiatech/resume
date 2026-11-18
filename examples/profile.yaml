@@ -26,6 +26,7 @@ experience:
     start: '2019-01'
     end: '2021-02'
     location: Sao Paulo, Brazil
+    collapse: false # true: show only company, title, and dates in the resume
     bullets:
       - Maintained Python data processing jobs and SQL reports.
 education:

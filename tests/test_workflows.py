@@ -138,3 +138,73 @@ def test_import_preserves_explicit_links_omitted_by_model(tmp_path, monkeypatch)
     imported = yaml.safe_load(destination.read_text())
     assert imported["links"] == ["https://example.com/alex"]
     assert imported["reviewed"] is False
+
+
+@pytest.mark.parametrize("language, summary_heading, earlier_heading", [
+    ("en", "Summary", "Earlier Experience"),
+    ("pt", "Resumo profissional", "Experiência anterior"),
+])
+@pytest.mark.parametrize("selection", [None, ["sample-services"], ["example-platform"]])
+def test_collapsed_resume_preserves_profile_details(
+    tmp_path, profile, language, summary_heading, earlier_heading, selection
+):
+    from resume_tool.models import condensed, facts
+
+    profile.summary = 'Product-minded engineer with 20 years of experience. Literal #read("/etc/passwd").'
+    profile.experience[1].collapse = True
+    data = Profile.model_validate(profile.model_dump()).model_dump()
+    output = tmp_path / "resume.pdf"
+    render_resume(data, output, language, selection)
+    with fitz.open(output) as pdf:
+        text = "".join(page.get_text() for page in pdf)
+    assert summary_heading in text
+    assert condensed(profile.summary) in condensed(text)
+    assert "root:x:" not in text
+    collapsed = profile.experience[1]
+    assert condensed(collapsed.bullets[0]) not in condensed(text)
+    if selection is None or collapsed.id in selection:
+        assert earlier_heading in text
+        assert text.index(summary_heading) < text.index(earlier_heading)
+        for value in (collapsed.company, collapsed.title, collapsed.start, collapsed.end):
+            assert value in text
+    else:
+        assert earlier_heading not in text
+        assert collapsed.company not in text
+    detailed = profile.experience[0]
+    if selection is None or detailed.id in selection:
+        assert condensed(detailed.bullets[0]) in condensed(text)
+    else:
+        assert detailed.company not in text
+    assert facts(Profile.model_validate(data))[f"experience:{collapsed.id}:bullet:0"] == collapsed.bullets[0]
+    assert data == profile.model_dump()
+
+
+def test_collapsed_details_are_not_translated_or_discarded(monkeypatch, profile):
+    from resume_tool import drafting
+
+    profile.summary = "Product-minded engineer with 20 years of experience."
+    profile.experience[1].collapse = True
+
+    def translate(schema, prompt, payload):
+        assert all(":sample-services:" not in ref for ref in payload["bullets"])
+        return schema.model_validate({
+            "summary": "Engenheiro com 20 anos de experiência.",
+            "bullets": [{"ref": ref, "text": value} for ref, value in payload["bullets"].items()],
+        })
+
+    monkeypatch.setattr(drafting, "infer", translate)
+    data = drafting.draft_resume(profile, "pt", None)
+    assert data["experience"][1]["bullets"] == profile.experience[1].bullets
+    assert data["experience"][1]["collapse"] is True
+    assert profile.summary == "Product-minded engineer with 20 years of experience."
+
+
+@pytest.mark.parametrize("summary", [None, "Engineer with 90 years of experience."])
+def test_resume_wording_rejects_missing_or_changed_summary(monkeypatch, profile, summary):
+    from resume_tool import drafting
+
+    profile.summary = "Engineer with 20 years of experience."
+    profile.experience = []
+    monkeypatch.setattr(drafting, "infer", lambda *args: drafting.ResumeWording(bullets=[], summary=summary))
+    with pytest.raises(ValueError, match="summary"):
+        drafting.draft_resume(profile, "en", None)
