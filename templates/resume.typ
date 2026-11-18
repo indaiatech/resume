@@ -89,7 +89,7 @@
       )
       v(2pt)
       if entry.bullets.len() > 0 {
-        block(above: 3pt, below: 8pt, pad(left: 1.5em, list(indent: 0.25em, spacing: 0.8em, ..entry.bullets.map(bullet => plain(bullet)))))
+        block(above: 6pt, below: 11pt, pad(left: 1.5em, list(indent: 0.25em, spacing: 0.8em, ..entry.bullets.map(bullet => plain(bullet)))))
       }
     }
   ]
