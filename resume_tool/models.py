@@ -20,6 +20,7 @@ class Experience(Record):
     modality: Literal["remote", "hybrid", "onsite"] | None = None
     bullets: list[str] = Field(default_factory=list)
     collapse: bool = False
+    earlier_layout: Literal["inline", "lines"] | None = None
 
     @model_validator(mode="after")
     def chronological(self):
@@ -70,6 +71,7 @@ class Profile(Record):
     skills: list[SkillGroup | str] = Field(default_factory=list)
     languages: list[Language | str] = Field(default_factory=list)
     certifications: list[Certification | str] = Field(default_factory=list)
+    achievements: list[str] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def unique_ids(self):
@@ -150,6 +152,8 @@ def facts(profile: Profile) -> dict[str, str]:
         if item.credential_id:
             parts.append(f"credential {item.credential_id}")
         result[f"certifications:{i}"] = "; ".join(parts)
+    for i, achievement in enumerate(profile.achievements):
+        result[f"achievements:{i}"] = achievement
     return result
 
 

@@ -32,17 +32,6 @@
   pad(left: 1.4em, body)
 }
 
-// Two-column header: identity and contacts on the left, photo on the right.
-// The package header above is intentionally empty; this grid replaces it.
-// First line: name left, role right in gray. Contacts on one line below.
-#grid(
-  columns: (1fr, auto),
-  align: (left, bottom + right),
-  column-gutter: 14pt,
-  author-title(author: (name: p.name, headline: "", position: left, uppercase: false), font-size: 10pt),
-  text(fill: luma(60%), size: 10pt * 1.5)[#if p.at("headline", default: none) == none { [] } else { p.headline }],
-)
-#v(0.35em)
 // Contacts spread across the line: every supplied block shares the width,
 // first left, last right, middles centered. With all four blocks the original
 // proportions (wider email column) are preserved.
@@ -57,10 +46,23 @@
 #let contact-aligns = if present-contacts.len() == 1 { (center,) } else {
   range(present-contacts.len()).map(index => if index == 0 { left } else if index == present-contacts.len() - 1 { right } else { center })
 }
-#grid(
-  columns: contact-columns,
-  align: contact-aligns,
-  ..present-contacts.map(entry => entry.cell),
+// Explicit stack gaps avoid paragraph margins above and below the role line.
+#stack(
+  spacing: 1em,
+  author-title(
+    author: (name: p.name, headline: "", position: center, uppercase: false),
+    font-size: 10pt,
+  ),
+  ..(if p.at("headline", default: none) != none and p.headline != "" {
+    // Long role lists shrink slightly to stay on one centered line.
+    let roles-size = if p.headline.len() > 60 { 10pt * 1.2 } else { 10pt * 1.5 }
+    (align(center, text(fill: luma(60%), size: roles-size, p.headline)),)
+  } else { () }),
+  grid(
+    columns: contact-columns,
+    align: contact-aligns.map(horizontal => horizontal + bottom),
+    ..present-contacts.map(entry => entry.cell),
+  ),
 )
 
 // Render every supplied string as text, preserving explicit line breaks.
@@ -89,11 +91,11 @@
         if entry.at("location", default: none) == none { "" } else { entry.location }
       } else { labels.modalities.at(entry.modality) }
       let location = if entry.at("modality", default: none) == none { "" } else { if entry.at("location", default: none) == none { "" } else { entry.location } }
-      grid(
+      block(sticky: true, grid(
         columns: (1fr, 1fr),
         align(left)[#strong(entry.company) \ #emph(entry.title)],
         align(right)[#strong(entry-dates(entry)) \ #emph[#modality#if location != "" [#sym.dash.em #location]]],
-      )
+      ))
       v(2pt)
       if entry.bullets.len() > 0 {
         block(above: 6pt, below: 11pt, pad(left: 1.5em, list(indent: 0.25em, spacing: 0.8em, ..entry.bullets.map(bullet => plain(bullet)))))
@@ -104,41 +106,44 @@
 
 #if earlier-experience.len() > 0 {
   mysection(labels.earlier_experience)[
-    #for entry in earlier-experience {
+    #set par(justify: false)
+    #for title in earlier-experience.map(entry => entry.title).dedup() {
+      let entries = earlier-experience.filter(entry => entry.title == title)
       grid(
-        columns: (1fr, auto),
+        columns: (11em, 1fr),
         column-gutter: 1em,
-        align(left)[#strong(plain(entry.company)) — #plain(entry.title)],
-        align(right, entry-dates(entry)),
+        align(left, text(hyphenate: false, strong(plain(title)))),
+        align(left, entries.map(entry =>
+          box[#strong(plain(entry.company))~#box[(#entry-dates(entry))]]
+        ).join(if entries.map(entry => entry.at("earlier_layout", default: none)).contains("lines") { linebreak() } else { [; ] })),
       )
       v(3pt)
     }
   ]
 }
 
-#if p.education.len() > 0 {
-  mysection(labels.education)[
+#let education-list = [
     #for entry in p.education {
       edu(
         institution: entry.institution,
         degree: entry.degree,
+        columns: (1fr, auto),
         dates: if entry.start == none and entry.end == none { "" } else { dates-helper(start-date: if entry.start == none { "" } else { entry.start }, end-date: if entry.end == none { "" } else { entry.end }) },
         location: if p.at("location", default: none) == none { "" } else { p.at("location", default: none) },
       )[]
     }
     #v(8pt)
   ]
-}
 
 #let skill-list = if p.skills.len() > 0 { skills[
+  #set par(justify: false)
   #for group in p.skills {
     if type(group) == str {
       [- #plain(group)]
     } else {
-      // Label column and items column: items never wrap below the category.
-      grid(columns: (11em, 1fr), gutter: 0.8em, align(left)[*#group.label:*], align(left, plain(group.items.join(", "))))
-      v(0.4em)
+      [#strong(plain(group.label)): #plain(group.items.join(", "))]
     }
+    v(0.4em)
   }
   #v(8pt)
 ] }
@@ -153,18 +158,9 @@
   #v(8pt)
 ] }
 
-#if p.skills.len() > 0 and p.languages.len() > 0 {
-  grid(columns: (1.7fr, 1fr), gutter: 2em,
-    mysection(labels.skills)[#skill-list],
-    mysection(labels.languages)[#language-list],
-  )
-} else {
-  if p.skills.len() > 0 { mysection(labels.skills)[#skill-list] }
-  if p.languages.len() > 0 { mysection(labels.languages)[#language-list] }
-}
 
-#if p.certifications.len() > 0 {
-  mysection(labels.certifications)[
+#let certification-list = [
+    #set par(justify: false)
     #for entry in p.certifications {
       if type(entry) == str {
         grid(columns: (1fr, auto), align(left)[*#plain(entry)*], [])
@@ -172,6 +168,7 @@
         let date = if entry.at("expires", default: none) == none { if entry.at("issued", default: none) == none { "" } else { entry.issued } } else { dates-helper(start-date: entry.issued, end-date: entry.expires) }
         grid(
           columns: (1fr, auto),
+          column-gutter: 0.8em,
           align(left)[*#plain(entry.name)*#if entry.at("issuer", default: none) == none { [] } else { [, #emph(entry.issuer)] }],
           align(right, date),
         )
@@ -179,5 +176,30 @@
       }
     }
     #v(8pt)
+  ]
+
+#if p.education.len() > 0 and p.languages.len() > 0 {
+  grid(columns: (1fr, 1fr), gutter: 2em,
+    mysection(labels.education)[#education-list],
+    mysection(labels.languages)[#language-list],
+  )
+} else {
+  if p.education.len() > 0 { mysection(labels.education)[#education-list] }
+  if p.languages.len() > 0 { mysection(labels.languages)[#language-list] }
+}
+
+#if p.certifications.len() > 0 and p.skills.len() > 0 {
+  grid(columns: (1fr, 1fr), gutter: 2em,
+    mysection(labels.certifications)[#certification-list],
+    mysection(labels.skills)[#skill-list],
+  )
+} else {
+  if p.certifications.len() > 0 { mysection(labels.certifications)[#certification-list] }
+  if p.skills.len() > 0 { mysection(labels.skills)[#skill-list] }
+}
+
+#if p.at("achievements", default: ()).len() > 0 {
+  mysection(labels.achievements)[
+    #list(indent: 0.25em, spacing: 0.8em, ..p.achievements.map(plain))
   ]
 }

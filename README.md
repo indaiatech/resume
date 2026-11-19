@@ -2,7 +2,7 @@
 
 Import a text-based LinkedIn PDF into a reviewed YAML profile, build concise Typst resumes, check PDF readability offline, compare your profile with a job, and draft a cover letter.
 
-All inference uses local Ollama. No OpenAI account, Codex subscription, browser automation, or external inference API is needed. Internet access is needed for initial dependency/model downloads, not document processing.
+All inference uses local Ollama. No OpenAI account, Codex subscription, browser automation, or external inference API is needed. Internet access is needed for initial dependency/model downloads and, when configured, fetching the latest profile from a Gist. Document rendering and inference stay local.
 
 ## Setup
 
@@ -48,6 +48,52 @@ This writes `profile.yaml` with `reviewed: false`. Review it against the origina
 - IDs must be unique lowercase slugs. Keep them stable: reports reference them.
 - `examples/profile.yaml` is synthetic and demonstrates the schema. It is not your CV.
 
+## Version the profile in a Gist (optional)
+
+Keep the complete profile out of the public toolkit repository while versioning it
+in a separate **secret Gist** containing a file named `profile.yaml`.
+Secret Gists are **unlisted, not private**: anyone who obtains the URL can read the
+file and its history. Keeping the URL in `.env` prevents committing it here; it
+does not provide access control. Use a private repository instead if that is required.
+
+1. Create a secret Gist from the reviewed profile, using the GitHub website or
+   `gh gist create profile.yaml --desc 'Resume profile source'` (secret by default).
+2. Create `.env` from `.env.example` if it does not already exist, and replace the
+   example URL with your Gist's browser URL:
+
+   ```dotenv
+   PROFILE_GIST_URL=https://gist.github.com/YOUR_GITHUB_USERNAME/YOUR_GIST_ID
+   ```
+
+3. Run `task resume`. Task loads `.env`; the CLI fetches the latest `profile.yaml`,
+   validates the schema and `reviewed: true`, then replaces the local copy atomically.
+   The URL is not printed or saved in generated reports. No GitHub token is needed
+   to download a secret Gist.
+
+Every configured resume run requires network access. Download, validation, or
+conflict errors stop generation; there is no silent fallback to a stale profile.
+If `PROFILE_GIST_URL` is empty or unset, the existing local-only workflow is unchanged.
+Direct CLI usage reads this variable from the process environment, not from `.env`.
+Other commands use the local profile and do not fetch it automatically.
+
+Local edits are never automatically uploaded. Publish them before the next resume:
+
+```bash
+gh gist edit 'https://gist.github.com/YOUR_GITHUB_USERNAME/YOUR_GIST_ID' --filename profile.yaml profile.yaml
+```
+
+Synchronization refuses to replace unsynchronized local edits. It also refuses to
+adopt a different remote over an existing, different local profile without a matching
+sync baseline. The local `*.gist-sync.json` baseline contains only source/content
+hashes and is ignored by Git, as are the profile, local profile copies, `.env`, and
+temporary sync directories. Preserve this baseline between runs.
+
+To render a different local profile without downloading the configured Gist:
+
+```bash
+PROFILE_GIST_URL= task resume PROFILE=examples/profile.yaml
+```
+
 ## Generate a resume
 
 ```bash
@@ -56,7 +102,7 @@ task resume
 task resume PROFILE=examples/profile.yaml
 ```
 
-A general resume uses English achievement wording. Official names, titles, dates, and factual qualifications remain intact. Concise wording is generated locally and saved for review; numeric tokens are checked against the original bullets. The source YAML is not changed.
+A general resume renders the reviewed profile verbatim with English section labels and no model call. Job-tailored runs translate the selected achievement bullets and summary locally, save the wording for review, and check numeric tokens against the synchronized profile. Official names, titles, dates, and factual qualifications remain intact; the model never rewrites the source YAML.
 
 Provide the vacancy as literal text in an environment variable, not as shell commands:
 
@@ -84,7 +130,11 @@ Each run creates a unique `output/<UTC timestamp>-<command>-<random>/` directory
 `profile.yaml` is the complete source of truth, including details intended for LinkedIn.
 The resume displays its `summary` above Experience. Add `collapse: true` to an
 experience entry to show only its company, title, and dates under Earlier Experience
-(Experiência anterior in Portuguese). Omitted or `false` keeps the full entry.
+(Experiência anterior in Portuguese). Entries with the same title share a role label
+and list their companies with individual periods, without shrinking typography or
+spacing. Omitted or `false` keeps the full entry. Optional `earlier_layout: lines`
+on a collapsed entry stacks each grouped company on its own line instead of the
+default inline `;`-joined list; entries without the flag stay inline.
 Bullets remain in the profile, saved snapshots, and matching evidence; collapse
 affects resume presentation only and never deletes or rewrites the source YAML.
 Job-tailored selection still determines which entries appear before collapse is applied.
@@ -97,13 +147,21 @@ experience:
     start: '2009'
     end: '2011'
     collapse: true
+    earlier_layout: lines # stacks each company on its own line (default: inline)
     bullets:
       - Full project details remain available for LinkedIn and matching.
 ```
 
 The document uses the [tech-focused-resume](https://typst.app/universe/package/tech-focused-resume) (MIT) and [exp-cover-letter](https://typst.app/universe/package/exp-cover-letter) (public domain) Typst packages. Their sources are fetched from the Typst package registry once during `task setup` and cached; document rendering then stays offline. Cover letters keep the package's sender/date/closing layout with the same font as the resume.
 
-Two-column header: name and contacts on the left, photo on the right. Set `photo: /path/to/image` in the profile, or just leave a `profile.jpeg` file in the project root. Note: Harvard's guidance recommends omitting photos; this is your explicit choice, and some US employers discard resumes with photos.
+The header has three lines: centered name, centered roles from `headline`, and a contact row. Explicit stack gaps keep the role line compact. Contacts keep their existing distribution across the available width. No photo is rendered.
+
+The footer pairs Education with Languages, then Certifications with Skills. An unpaired section uses the full width. Optional `achievements` appear last as Selected Achievements (Principais conquistas in Portuguese). Keep these brief and source-backed; they are also available as matching evidence and translated with numeric-fact checks. Imports only accept achievements explicitly present in the source.
+
+```yaml
+achievements:
+  - First place in the fictional Example Systems engineering challenge (2023).
+```
 
 One page is the target; two is the maximum. Overflow fails with a diagnostic instead of shrinking the font or truncating content. Shorten the reviewed content or select a more focused profile if necessary.
 

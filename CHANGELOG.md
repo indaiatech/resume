@@ -4,6 +4,12 @@
 
 - Preserve complete profile details while grouping `collapse: true` roles under Earlier Experience in resumes.
 - Render the profile summary above Experience and include it in job-tailored translation with numeric-fact checks.
+- Optionally fetch a versioned profile from a Gist before resume generation, with `.env` configuration, review validation, atomic replacement, and local-edit conflict protection.
+- Center the resume name and roles above the contact row, and group earlier jobs by title while preserving every company's dates.
+- Bypass cached Gist raw responses so newly published profile revisions are fetched without weakening local-edit conflict protection.
+- Support source-backed achievements in profiles, imports, matching, translated resumes, and localized section headings.
+- Allow collapsed entries to stack grouped companies with `earlier_layout: lines`, keeping other groups inline.
+- Pair Education with Languages and Certifications with Skills, place Selected Achievements last, and tighten header gaps without shrinking typography. Keep experience headings with their first bullet across page breaks.
 
 ## 0.1.0
 

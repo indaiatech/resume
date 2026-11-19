@@ -1,5 +1,7 @@
 version: '3'
 
+dotenv: ['.env']
+
 vars:
   MODEL: '{{default "qwen3.5:4b" .OLLAMA_MODEL}}'
   PROFILE: '{{default "profile.yaml" .PROFILE}}'

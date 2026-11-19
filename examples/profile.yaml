@@ -49,3 +49,5 @@ certifications:
     issued: '2016-07'
     expires: '2017-07'
     credential_id: 'EXAMPLE-0001'
+achievements:
+  - First place in the fictional Example Systems engineering challenge (2023).

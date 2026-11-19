@@ -4,9 +4,10 @@ import pymupdf as fitz
 import pytest
 import yaml
 
-from resume_tool.cli import extract_pdf, read_profile
+from resume_tool.cli import extract_pdf
 from resume_tool.llm import endpoint
 from resume_tool.models import MatchResult, Profile, score_match
+from resume_tool.profile_source import read_profile
 from resume_tool.render import render_letter, render_resume
 
 
@@ -57,12 +58,14 @@ def test_remote_or_credentialed_model_endpoints_rejected(monkeypatch, url):
 def test_typst_treats_profile_text_as_data_and_renders_readable_pdf(tmp_path, profile):
     data = profile.model_dump()
     data["experience"][0]["bullets"][0] = 'Literal #read("/etc/passwd") and *markup* are text.'
+    data["achievements"] = ['Award text #read("/etc/passwd") is literal.']
     output = tmp_path / "resume.pdf"
     render_resume(data, output)
     with fitz.open(output) as pdf:
         text = "".join(page.get_text() for page in pdf)
         assert pdf.page_count == 1
         assert '#read("/etc/passwd")' in text
+        assert 'Award text #read("/etc/passwd")' in text
         assert "root:x:" not in text
         assert "Software Engineer" in text
         assert text.index("Software Engineer") < text.index("Junior Software Engineer")
@@ -166,15 +169,14 @@ def test_collapsed_resume_preserves_profile_details(
         assert earlier_heading in text
         assert text.index(summary_heading) < text.index(earlier_heading)
         for value in (collapsed.company, collapsed.title, collapsed.start, collapsed.end):
-            assert value in text
+            assert condensed(value) in condensed(text.replace("\u00ad", ""))
     else:
         assert earlier_heading not in text
-        assert collapsed.company not in text
     detailed = profile.experience[0]
     if selection is None or detailed.id in selection:
         assert condensed(detailed.bullets[0]) in condensed(text)
     else:
-        assert detailed.company not in text
+        assert condensed(detailed.bullets[0]) not in condensed(text)
     assert facts(Profile.model_validate(data))[f"experience:{collapsed.id}:bullet:0"] == collapsed.bullets[0]
     assert data == profile.model_dump()
 
@@ -190,6 +192,7 @@ def test_collapsed_details_are_not_translated_or_discarded(monkeypatch, profile)
         return schema.model_validate({
             "summary": "Engenheiro com 20 anos de experiência.",
             "bullets": [{"ref": ref, "text": value} for ref, value in payload["bullets"].items()],
+            "achievements": payload["achievements"],
         })
 
     monkeypatch.setattr(drafting, "infer", translate)
@@ -208,3 +211,156 @@ def test_resume_wording_rejects_missing_or_changed_summary(monkeypatch, profile,
     monkeypatch.setattr(drafting, "infer", lambda *args: drafting.ResumeWording(bullets=[], summary=summary))
     with pytest.raises(ValueError, match="summary"):
         drafting.draft_resume(profile, "en", None)
+
+
+def test_resume_header_centers_name_and_roles_above_one_contact_row(tmp_path, profile):
+    data = profile.model_dump()
+    data["headline"] = "Tech Lead | Platform AI Agents Engineer | Full Stack Engineer | SRE"
+    output = tmp_path / "header.pdf"
+    render_resume(data, output)
+    with fitz.open(output) as pdf:
+        page = pdf[0]
+        name, = page.search_for(data["name"])
+        roles, = page.search_for(data["headline"])
+        contacts = [page.search_for(data[field])[0] for field in ("phone", "email", "location")]
+        for rect in (name, roles):
+            assert (rect.x0 + rect.x1) / 2 == pytest.approx(page.rect.width / 2, abs=2)
+        assert name.y1 < roles.y0
+        assert roles.y1 < min(rect.y0 for rect in contacts)
+        assert max(rect.y0 for rect in contacts) < min(rect.y1 for rect in contacts)
+
+
+def test_long_role_lines_shrink_to_a_single_centered_line(tmp_path, profile):
+    data = profile.model_dump()
+    data["headline"] = "Engineering Manager | Tech Lead | Staff Software Engineer | AI Platform Engineer | SRE"
+    assert len(data["headline"]) > 60
+    output = tmp_path / "long-header.pdf"
+    render_resume(data, output)
+    with fitz.open(output) as pdf:
+        page = pdf[0]
+        roles, = page.search_for(data["headline"])
+        assert roles.x1 - roles.x0 < page.rect.width - 2 * 28.8
+        assert (roles.x0 + roles.x1) / 2 == pytest.approx(page.rect.width / 2, abs=2)
+
+
+def test_earlier_experience_groups_roles_without_losing_company_dates(tmp_path, profile):
+    from resume_tool.models import condensed
+
+    data = profile.model_dump()
+    original = data["experience"][0]
+    entries = [
+        ("recent-dev", "Recent Studio", "Developer", "2011-01", "2012-06"),
+        ("early-lead", "Platform Company", "Tech Lead", "2010-01", "2010-12"),
+        ("first-dev", "International Software and Infrastructure Engineering Research and Development Services", "Developer", "2007-05", "2008-04"),
+    ]
+    data["experience"] = [
+        {**original, "id": id_, "company": company, "title": title, "start": start,
+         "end": end, "collapse": True, "bullets": ["Hidden project details remain in the profile."]}
+        for id_, company, title, start, end in entries
+    ]
+    output = tmp_path / "earlier.pdf"
+    render_resume(data, output)
+    with fitz.open(output) as pdf:
+        text = "".join(page.get_text() for page in pdf)
+        for page in pdf:
+            for word in page.get_text("words"):
+                assert 0 <= word[0] <= word[2] <= page.rect.width
+    assert text.count("Developer") == 1
+    assert text.count("Tech Lead") == 1
+    for _, company, _, start, end in entries:
+        assert condensed(f"{company} ({start} — {end})") in condensed(text.replace("\u00ad", ""))
+    assert "Hidden project details" not in text
+
+
+def test_earlier_layout_lines_stack_companies_and_inline_stays_joined(tmp_path, profile):
+    data = profile.model_dump()
+    data["experience"] = [
+        {**data["experience"][0], "id": "stacked-a", "company": "Stacked Company A",
+         "title": "Engineering Manager", "start": "2013-01", "end": "2014-01",
+         "collapse": True, "earlier_layout": "lines",
+         "bullets": ["Stacked detail A."]},
+        {**data["experience"][0], "id": "stacked-b", "company": "Stacked Company B",
+         "title": "Engineering Manager", "start": "2012-01", "end": "2012-12",
+         "collapse": True, "earlier_layout": "lines",
+         "bullets": ["Stacked detail B."]},
+        {**data["experience"][0], "id": "inline-a", "company": "Inline Company A",
+         "title": "Developer", "start": "2011-01", "end": "2011-12",
+         "collapse": True, "bullets": ["Inline detail A."]},
+        {**data["experience"][0], "id": "inline-b", "company": "Inline Company B",
+         "title": "Developer", "start": "2010-01", "end": "2010-12",
+         "collapse": True, "bullets": ["Inline detail B."]},
+    ]
+    output = tmp_path / "layout.pdf"
+    render_resume(data, output)
+    with fitz.open(output) as pdf:
+        lines = [line for page in pdf for line in page.get_text().splitlines()]
+    stacked_lines = [line.strip() for line in lines if "Stacked Company" in line]
+    inline_lines = [line.strip() for line in lines if "Inline Company" in line]
+    assert len(stacked_lines) == 2 and any("Stacked Company A" in line for line in stacked_lines) and any("Stacked Company B" in line for line in stacked_lines)
+    assert len(inline_lines) == 1 and "Inline Company A" in inline_lines[0] and "Inline Company B" in inline_lines[0]
+
+
+@pytest.mark.parametrize("language, headings", [
+    ("en", ("Education", "Languages", "Certifications", "Skills", "Selected Achievements")),
+    ("pt", ("Formação acadêmica", "Idiomas", "Certificações", "Competências", "Principais conquistas")),
+])
+def test_resume_pairs_footer_sections_and_places_achievements_last(tmp_path, profile, language, headings):
+    data = profile.model_dump()
+    output = tmp_path / "footer.pdf"
+    render_resume(data, output, language)
+    positions = {}
+    with fitz.open(output) as pdf:
+        text = "".join(page.get_text() for page in pdf)
+        for index, page in enumerate(pdf):
+            for heading in headings:
+                matches = page.search_for(heading)
+                if matches and heading not in positions:
+                    positions[heading] = (index, matches[0])
+    for left, right in ((headings[0], headings[1]), (headings[2], headings[3])):
+        left_page, left_rect = positions[left]
+        right_page, right_rect = positions[right]
+        assert left_page == right_page
+        assert left_rect.y0 == pytest.approx(right_rect.y0, abs=1)
+        assert left_rect.x0 < right_rect.x0
+    assert [(positions[heading][0], positions[heading][1].y0) for heading in headings[::2]] == sorted(
+        (positions[heading][0], positions[heading][1].y0) for heading in headings[::2]
+    )
+    assert profile.achievements[0] in text.replace("\n", " ")
+
+
+@pytest.mark.parametrize("field, heading", [
+    ("education", "Education"),
+    ("languages", "Languages"),
+    ("certifications", "Certifications"),
+    ("skills", "Skills"),
+])
+def test_unpaired_footer_sections_render_without_empty_sections(tmp_path, profile, field, heading):
+    data = profile.model_dump()
+    for key in ("education", "languages", "certifications", "skills", "achievements"):
+        if key != field:
+            data[key] = []
+    output = tmp_path / "unpaired.pdf"
+    render_resume(data, output)
+    with fitz.open(output) as pdf:
+        matches = [rect for page in pdf for rect in page.search_for(heading)]
+        assert matches[0].x0 < pdf[0].rect.width / 4
+        lines = {line.strip() for page in pdf for line in page.get_text().splitlines()}
+    assert heading in lines
+    assert not ({"Education", "Languages", "Certifications", "Skills", "Selected Achievements"} - {heading}) & lines
+
+
+@pytest.mark.parametrize("preceding_bullets", [30, 31, 32, 33])
+def test_experience_header_stays_with_its_first_bullet(tmp_path, profile, preceding_bullets):
+    data = profile.model_dump()
+    data["experience"][0]["bullets"] = [
+        "Completed project work improving platform reliability."
+    ] * preceding_bullets
+    first_bullet = "Built a distinct service with measurable reliability improvements."
+    data["experience"][1]["bullets"] = [first_bullet]
+    output = tmp_path / "pagination.pdf"
+    render_resume(data, output)
+    with fitz.open(output) as pdf:
+        pages = [page.get_text() for page in pdf]
+    company_page = next(i for i, text in enumerate(pages) if data["experience"][1]["company"] in text)
+    bullet_page = next(i for i, text in enumerate(pages) if first_bullet in text.replace("\n", " "))
+    assert company_page == bullet_page

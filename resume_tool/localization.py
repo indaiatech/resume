@@ -14,6 +14,7 @@ class Labels(Record):
     skills: str
     languages: str
     certifications: str
+    achievements: str
     current: str
     greeting: str
     closing: str
@@ -26,6 +27,7 @@ def labels(language: str) -> dict[str, str]:
         raise ValueError("Document language must be a lowercase ISO 639 code")
     english = {
         "summary": "Summary", "earlier_experience": "Earlier Experience",
+        "achievements": "Selected Achievements",
         "experience": "Experience", "education": "Education", "skills": "Skills",
         "languages": "Languages", "certifications": "Certifications", "current": "Present",
         "greeting": "Dear Hiring Team,", "closing": "Sincerely,",
@@ -36,6 +38,7 @@ def labels(language: str) -> dict[str, str]:
     if language == "pt":
         return {
             "summary": "Resumo profissional", "earlier_experience": "Experiência anterior",
+            "achievements": "Principais conquistas",
             "experience": "Experiência profissional", "education": "Formação acadêmica",
             "skills": "Competências", "languages": "Idiomas", "certifications": "Certificações",
             "current": "Atual", "greeting": "Prezada equipe de recrutamento,", "closing": "Atenciosamente,",

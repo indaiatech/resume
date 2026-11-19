@@ -18,6 +18,7 @@ from .models import (
     ImportResult, LetterResult, MatchResult, Profile, condensed, facts, normalized,
     score_match, validate_evidence,
 )
+from .profile_source import read_profile, sync_profile
 
 MAX_CHARS = 60000
 
@@ -40,15 +41,6 @@ def run_dir(command: str) -> Path:
     path = root / f"{stamp}-{command}-{uuid.uuid4().hex[:8]}"
     path.mkdir(mode=0o700)
     return path
-
-
-def read_profile(path: Path) -> Profile:
-    if path.stat().st_size > 1_000_000:
-        raise ValueError("Profile exceeds 1 MB")
-    profile = Profile.model_validate(yaml.safe_load(path.read_text()))
-    if not profile.reviewed:
-        raise ValueError("Review the imported YAML and set reviewed: true before generating documents or matching")
-    return profile
 
 
 def job_description(required: bool) -> str | None:
@@ -111,7 +103,8 @@ def import_profile(pdf: Path, destination: Path) -> None:
         "Extract a complete profile from this LinkedIn PDF text. Copy descriptive facts "
         "verbatim from the text, including the professional headline line under the name "
         "(e.g. Tech Lead | AI Engineer) as headline, companies, titles, bullets, education, skills, "
-        "languages and certifications. Capture each certification as name, issuer, "
+        "languages, certifications, and achievements. Copy awards and milestones into "
+        "achievements only when explicitly present. Capture each certification as name, issuer, "
         "issued and expires dates (YYYY-MM), and credential_id when the text shows them. "
         "Do not summarize or translate. Use null/empty lists "
         "for absent fields. Dates only YYYY or YYYY-MM; end null means current. "
@@ -140,6 +133,7 @@ def import_profile(pdf: Path, destination: Path) -> None:
         else:
             values += [group.label, *group.items]
     values += [c if isinstance(c, str) else c.name for c in profile.certifications]
+    values += profile.achievements
     for entry in profile.experience:
         values += [entry.company, entry.title, entry.location, *entry.bullets]
     for entry in profile.education:
@@ -253,6 +247,11 @@ def main() -> int:
             print(json.dumps(result, ensure_ascii=False, indent=2))
             print(f"Report: {folder / 'ats.json'}")
         else:
+            if args.command == "resume":
+                gist_url = os.environ.get("PROFILE_GIST_URL", "").strip()
+                if gist_url:
+                    sync_profile(args.profile, gist_url)
+                    print("Profile synchronized from the configured Gist.")
             profile = read_profile(args.profile)
             job = job_description(required=args.command != "resume")
             folder = prepare(profile, args.command, job)
