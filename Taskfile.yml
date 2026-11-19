@@ -46,6 +46,16 @@ tasks:
         print(f"Created {target} with reviewed=false; review it against your real history before generating documents")
         PY
 
+  profile-sync:
+    desc: Publish the local profile.yaml to the configured Gist (PROFILE_GIST_URL)
+    cmds:
+      - |
+        if [ -z "${PROFILE_GIST_URL:-}" ]; then
+          echo "PROFILE_GIST_URL is not configured; nothing to publish"
+          exit 1
+        fi
+        gh gist edit "$PROFILE_GIST_URL" --filename profile.yaml profile.yaml
+
   model-up:
     desc: Start local Ollama, bound only to loopback
     cmds:

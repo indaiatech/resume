@@ -82,6 +82,10 @@ Local edits are never automatically uploaded. Publish them before the next resum
 gh gist edit 'https://gist.github.com/YOUR_GITHUB_USERNAME/YOUR_GIST_ID' --filename profile.yaml profile.yaml
 ```
 
+`task profile-sync` runs the same publish reading the URL from `.env`, and fails
+with a clear message when no Gist is configured. Agents must publish after every
+`profile.yaml` change (see [AGENTS.md](AGENTS.md)).
+
 Synchronization refuses to replace unsynchronized local edits. It also refuses to
 adopt a different remote over an existing, different local profile without a matching
 sync baseline. The local `*.gist-sync.json` baseline contains only source/content

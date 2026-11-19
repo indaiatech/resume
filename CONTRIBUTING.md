@@ -8,6 +8,7 @@
 ## Ground rules
 
 - Tests must pass: `task test`.
+- Changed `profile.yaml`? Publish it to the configured Gist immediately with `task profile-sync` — every change, however small (see [AGENTS.md](AGENTS.md)).
 - Keep the privacy posture: never commit `profile*.yaml`, `.env`, `*.gist-sync.json`, or `output/` artifacts. Personal data stays out of the repository and its history.
 - Conventional commit subjects (`feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`), matching the existing history.
 - Smallest change that works; match the existing style. No new dependencies without justification.
