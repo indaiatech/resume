@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Publish under the MIT license with community health files, a CI workflow, and repository governance.
+
 - Preserve complete profile details while grouping `collapse: true` roles under Earlier Experience in resumes.
 - Render the profile summary above Experience and include it in job-tailored translation with numeric-fact checks.
 - Optionally fetch a versioned profile from a Gist before resume generation, with `.env` configuration, review validation, atomic replacement, and local-edit conflict protection.

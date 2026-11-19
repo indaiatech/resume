@@ -221,4 +221,4 @@ Deterministic checks cover evidence rejection, scoring, explicit review, loopbac
 
 ## Licensing
 
-PyMuPDF is available under AGPL or a commercial license. Review those obligations before distributing this tool or offering a service; this is not an all-MIT dependency stack. No license for your project code has been selected on your behalf.
+This project is MIT-licensed (see [LICENSE](LICENSE)). PyMuPDF remains available under AGPL or a commercial license: distributing binaries or offering a service built on it carries AGPL obligations for the combined work. Review those obligations; this is not an all-MIT dependency stack.
