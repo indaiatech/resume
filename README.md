@@ -135,6 +135,11 @@ and list their companies with individual periods, without shrinking typography o
 spacing. Omitted or `false` keeps the full entry. Optional `earlier_layout: lines`
 on a collapsed entry stacks each grouped company on its own line instead of the
 default inline `;`-joined list; entries without the flag stay inline.
+Set `contractor: true` on engagements performed as contractors; the resume marks
+the company with a localized `· Contract` marker. Set `stealth: true` when the
+client identity is NDA-protected: the company renders as Confidential Client
+(NDA) (Cliente Confidencial (NDA) in Portuguese) and the source name stays only
+in the YAML — following the common convention for stealth clients.
 Bullets remain in the profile, saved snapshots, and matching evidence; collapse
 affects resume presentation only and never deletes or rewrites the source YAML.
 Job-tailored selection still determines which entries appear before collapse is applied.

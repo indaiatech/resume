@@ -20,6 +20,8 @@ class Experience(Record):
     modality: Literal["remote", "hybrid", "onsite"] | None = None
     bullets: list[str] = Field(default_factory=list)
     collapse: bool = False
+    contractor: bool = False
+    stealth: bool = False
     earlier_layout: Literal["inline", "lines"] | None = None
 
     @model_validator(mode="after")

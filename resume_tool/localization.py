@@ -19,6 +19,8 @@ class Labels(Record):
     greeting: str
     closing: str
     modalities: dict[str, str]
+    stealth_client: str
+    contract: str
 
 
 @lru_cache(maxsize=16)
@@ -32,6 +34,7 @@ def labels(language: str) -> dict[str, str]:
         "languages": "Languages", "certifications": "Certifications", "current": "Present",
         "greeting": "Dear Hiring Team,", "closing": "Sincerely,",
         "modalities": {"remote": "Remote", "hybrid": "Hybrid", "onsite": "On-site"},
+        "stealth_client": "Confidential Client (NDA)", "contract": "Contract",
     }
     if language == "en":
         return english
@@ -43,6 +46,7 @@ def labels(language: str) -> dict[str, str]:
             "skills": "Competências", "languages": "Idiomas", "certifications": "Certificações",
             "current": "Atual", "greeting": "Prezada equipe de recrutamento,", "closing": "Atenciosamente,",
             "modalities": {"remote": "Remoto", "hybrid": "Híbrido", "onsite": "Presencial"},
+            "stealth_client": "Cliente Confidencial (NDA)", "contract": "Contrato",
         }
     from .llm import infer
     return infer(Labels, "Translate these document labels into the requested language. Keep them concise and professional. No other text.", {"language": language, "labels": english}).model_dump()

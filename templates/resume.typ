@@ -82,6 +82,10 @@
 #let detailed-experience = p.experience.filter(entry => not entry.at("collapse", default: false))
 #let earlier-experience = p.experience.filter(entry => entry.at("collapse", default: false))
 
+// Stealth engagements hide the client name behind the localized NDA label.
+#let display-company(entry) = if entry.at("stealth", default: false) { labels.stealth_client } else { entry.company }
+#let contractor-mark(entry) = if entry.at("contractor", default: false) [ #sym.dot.c #emph(labels.contract)] else []
+
 #if detailed-experience.len() > 0 {
   mysection(labels.experience)[
     #for entry in detailed-experience {
@@ -93,7 +97,7 @@
       let location = if entry.at("modality", default: none) == none { "" } else { if entry.at("location", default: none) == none { "" } else { entry.location } }
       block(sticky: true, grid(
         columns: (1fr, 1fr),
-        align(left)[#strong(entry.company) \ #emph(entry.title)],
+        align(left)[#strong(plain(display-company(entry)))#contractor-mark(entry) \ #emph(entry.title)],
         align(right)[#strong(entry-dates(entry)) \ #emph[#modality#if location != "" [#sym.dash.em #location]]],
       ))
       v(2pt)
@@ -114,7 +118,7 @@
         column-gutter: 1em,
         align(left, text(hyphenate: false, strong(plain(title)))),
         align(left, entries.map(entry =>
-          box[#strong(plain(entry.company))~#box[(#entry-dates(entry))]]
+          box[#strong(plain(display-company(entry)))#contractor-mark(entry)~#box[(#entry-dates(entry))]]
         ).join(if entries.map(entry => entry.at("earlier_layout", default: none)).contains("lines") { linebreak() } else { [; ] })),
       )
       v(3pt)

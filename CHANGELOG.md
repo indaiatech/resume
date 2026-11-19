@@ -9,6 +9,7 @@
 - Bypass cached Gist raw responses so newly published profile revisions are fetched without weakening local-edit conflict protection.
 - Support source-backed achievements in profiles, imports, matching, translated resumes, and localized section headings.
 - Allow collapsed entries to stack grouped companies with `earlier_layout: lines`, keeping other groups inline.
+- Add `contractor` and `stealth` experience flags: contract engagements get a localized marker and NDA-protected clients render as Confidential Client without exposing the source name.
 - Pair Education with Languages and Certifications with Skills, place Selected Achievements last, and tighten header gaps without shrinking typography. Keep experience headings with their first bullet across page breaks.
 
 ## 0.1.0

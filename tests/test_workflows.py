@@ -272,6 +272,32 @@ def test_earlier_experience_groups_roles_without_losing_company_dates(tmp_path, 
     assert "Hidden project details" not in text
 
 
+def test_stealth_and_contractor_flags_change_only_company_display(tmp_path, profile):
+    data = profile.model_dump()
+    data["experience"][0]["company"] = "Really Concealed Ltd"
+    data["experience"][0]["stealth"] = True
+    data["experience"][0]["contractor"] = True
+    output = tmp_path / "stealth.pdf"
+    render_resume(data, output)
+    with fitz.open(output) as pdf:
+        text = " ".join(page.get_text() for page in pdf)
+    assert "Confidential Client (NDA)" in text
+    assert "Really Concealed Ltd" not in text
+    assert "· Contract" in text
+    assert data["experience"][0]["company"] == "Really Concealed Ltd"
+
+
+def test_contractor_flag_marks_named_companies(tmp_path, profile):
+    data = profile.model_dump()
+    data["experience"][0]["contractor"] = True
+    output = tmp_path / "contract.pdf"
+    render_resume(data, output)
+    with fitz.open(output) as pdf:
+        text = " ".join(page.get_text() for page in pdf)
+    assert "Example Systems" in text and "· Contract" in text
+    assert "Confidential Client" not in text
+
+
 def test_earlier_layout_lines_stack_companies_and_inline_stays_joined(tmp_path, profile):
     data = profile.model_dump()
     data["experience"] = [
