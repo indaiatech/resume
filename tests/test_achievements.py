@@ -1,6 +1,7 @@
-import pymupdf as fitz
 import pytest
 import yaml
+
+from pdf_helpers import PdfBuilder
 
 from resume_tool import cli, drafting
 from resume_tool.models import ImportResult, MatchResult, Profile, score_match
@@ -48,9 +49,7 @@ def test_import_accepts_only_source_backed_achievements(tmp_path, monkeypatch, i
     monkeypatch.chdir(tmp_path)
     source = tmp_path / "linkedin.pdf"
     achievement = "Won the 2025 Example Hackathon."
-    with fitz.open() as pdf:
-        pdf.new_page().insert_text((40, 40), f"Alex Example\n{achievement}")
-        pdf.save(source)
+    PdfBuilder().insert_text((40, 40), f"Alex Example\n{achievement}").save(source)
     proposed = achievement.replace("2025", "2024") if invented else achievement
     monkeypatch.setattr(cli, "infer", lambda *args: ImportResult(
         profile=Profile(name="Alex Example", achievements=[proposed]),

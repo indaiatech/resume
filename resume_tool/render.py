@@ -10,7 +10,7 @@ from pathlib import Path
 import shutil
 import tempfile
 
-import pymupdf as fitz
+import pdfplumber
 import typst
 
 
@@ -65,8 +65,8 @@ def _render(data: dict, output: Path, template: str, max_pages: int) -> None:
             (root / "data.json").write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
             pdf = root / "document.pdf"
             typst.compile(str(root / "main.typ"), output=str(pdf), root=str(root))
-            with fitz.open(pdf) as document:
-                pages = document.page_count
+            with pdfplumber.open(pdf) as document:
+                pages = len(document.pages)
             if not 1 <= pages <= max_pages:
                 raise ValueError(
                     f"Document has {pages} pages; the limit is {max_pages}. "

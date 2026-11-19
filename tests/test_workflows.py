@@ -1,14 +1,39 @@
 from pathlib import Path
+import unicodedata
 
-import pymupdf as fitz
+import pdfplumber
 import pytest
 import yaml
 
+from pdf_helpers import PdfBuilder
+from pdfminer.high_level import extract_pages
+from pdfminer.layout import LTTextContainer
 from resume_tool.cli import extract_pdf
 from resume_tool.llm import endpoint
 from resume_tool.models import MatchResult, Profile, score_match
 from resume_tool.profile_source import read_profile
 from resume_tool.render import render_letter, render_resume
+
+
+def pdf_text(path):
+    # Content-stream order (no layout analysis), matching the previous get_text() behavior.
+    return unicodedata.normalize("NFKC", "".join(
+        element.get_text()
+        for layout in extract_pages(path)
+        for element in layout
+        if isinstance(element, LTTextContainer)
+    ))
+
+
+def pdf_pages(path):
+    return [unicodedata.normalize("NFKC", "".join(
+        element.get_text() for element in layout if isinstance(element, LTTextContainer)
+    )) for layout in extract_pages(path)]
+
+
+def pdf_page_count(path):
+    with pdfplumber.open(path) as document:
+        return len(document.pages)
 
 
 @pytest.fixture
@@ -61,14 +86,13 @@ def test_typst_treats_profile_text_as_data_and_renders_readable_pdf(tmp_path, pr
     data["achievements"] = ['Award text #read("/etc/passwd") is literal.']
     output = tmp_path / "resume.pdf"
     render_resume(data, output)
-    with fitz.open(output) as pdf:
-        text = "".join(page.get_text() for page in pdf)
-        assert pdf.page_count == 1
-        assert '#read("/etc/passwd")' in text
-        assert 'Award text #read("/etc/passwd")' in text
-        assert "root:x:" not in text
-        assert "Software Engineer" in text
-        assert text.index("Software Engineer") < text.index("Junior Software Engineer")
+    assert pdf_page_count(output) == 1
+    text = pdf_text(output)
+    assert '#read("/etc/passwd")' in text
+    assert 'Award text #read("/etc/passwd")' in text
+    assert "root:x:" not in text
+    assert "Software Engineer" in text
+    assert text.index("Software Engineer") < text.index("Junior Software Engineer")
 
 
 def test_page_limit_does_not_replace_existing_pdf(tmp_path, profile):
@@ -84,13 +108,10 @@ def test_page_limit_does_not_replace_existing_pdf(tmp_path, profile):
 def test_portuguese_cover_letter_and_text_only_import_guard(tmp_path, profile):
     letter = tmp_path / "letter.pdf"
     render_letter(profile.model_dump(), ["Desenvolvi APIs em Python com PostgreSQL."], letter, "pt")
-    with fitz.open(letter) as pdf:
-        assert pdf.page_count == 1
-        assert "Prezada equipe de recrutamento" in pdf[0].get_text()
+    assert pdf_page_count(letter) == 1
+    assert "Prezada equipe de recrutamento" in pdf_text(letter)
     empty = tmp_path / "scan.pdf"
-    with fitz.open() as pdf:
-        pdf.new_page()
-        pdf.save(empty)
+    PdfBuilder().save(empty)
     with pytest.raises(ValueError, match="OCR"):
         extract_pdf(empty)
 
@@ -110,15 +131,14 @@ def test_resume_wording_rejects_changed_metrics(monkeypatch, profile):
 
 def test_two_column_pdf_is_extracted_column_by_column(tmp_path):
     source = tmp_path / "twocol.pdf"
-    with fitz.open() as pdf:
-        page = pdf.new_page()
-        page.insert_text((40, 40), "Summary")
-        page.insert_text((40, 60), "I lead engineering initiatives with reliability.")
-        page.insert_text((40, 80), "acquired companies and unicorns included.")
-        page.insert_text((330, 40), "Top Skills")
-        page.insert_text((330, 60), "Argo")
-        page.insert_text((330, 80), "MySQL")
-        pdf.save(source)
+    builder = PdfBuilder()
+    builder.insert_text((40, 40), "Summary")
+    builder.insert_text((40, 60), "I lead engineering initiatives with reliability.")
+    builder.insert_text((40, 80), "acquired companies and unicorns included.")
+    builder.insert_text((330, 40), "Top Skills")
+    builder.insert_text((330, 60), "Argo")
+    builder.insert_text((330, 80), "MySQL")
+    builder.save(source)
     text = extract_pdf(source)
     assert "with reliability." in text
     assert text.index("initiatives with reliability.") < text.index("Top Skills")
@@ -131,10 +151,7 @@ def test_import_preserves_explicit_links_omitted_by_model(tmp_path, monkeypatch)
 
     monkeypatch.chdir(tmp_path)
     source = tmp_path / "linkedin.pdf"
-    with fitz.open() as pdf:
-        page = pdf.new_page()
-        page.insert_text((40, 40), "Alex Example\nhttps://example.com/alex\n")
-        pdf.save(source)
+    PdfBuilder().insert_text((40, 40), "Alex Example\nhttps://example.com/alex\n").save(source)
     monkeypatch.setattr(cli, "infer", lambda *args: ImportResult(profile=Profile(name="Alex Example")))
     destination = tmp_path / "profile.yaml"
     cli.import_profile(source, destination)
@@ -158,8 +175,7 @@ def test_collapsed_resume_preserves_profile_details(
     data = Profile.model_validate(profile.model_dump()).model_dump()
     output = tmp_path / "resume.pdf"
     render_resume(data, output, language, selection)
-    with fitz.open(output) as pdf:
-        text = "".join(page.get_text() for page in pdf)
+    text = pdf_text(output)
     assert summary_heading in text
     assert condensed(profile.summary) in condensed(text)
     assert "root:x:" not in text
@@ -218,16 +234,16 @@ def test_resume_header_centers_name_and_roles_above_one_contact_row(tmp_path, pr
     data["headline"] = "Tech Lead | Platform AI Agents Engineer | Full Stack Engineer | SRE"
     output = tmp_path / "header.pdf"
     render_resume(data, output)
-    with fitz.open(output) as pdf:
-        page = pdf[0]
-        name, = page.search_for(data["name"])
-        roles, = page.search_for(data["headline"])
-        contacts = [page.search_for(data[field])[0] for field in ("phone", "email", "location")]
+    with pdfplumber.open(output) as pdf:
+        page = pdf.pages[0]
+        name, = page.search(data["name"], regex=False)
+        roles, = page.search(data["headline"], regex=False)
+        contacts = [page.search(data[field], regex=False)[0] for field in ("phone", "email", "location")]
         for rect in (name, roles):
-            assert (rect.x0 + rect.x1) / 2 == pytest.approx(page.rect.width / 2, abs=2)
-        assert name.y1 < roles.y0
-        assert roles.y1 < min(rect.y0 for rect in contacts)
-        assert max(rect.y0 for rect in contacts) < min(rect.y1 for rect in contacts)
+            assert (rect["x0"] + rect["x1"]) / 2 == pytest.approx(page.width / 2, abs=2)
+        assert name["bottom"] < roles["top"]
+        assert roles["bottom"] < min(rect["top"] for rect in contacts)
+        assert max(rect["top"] for rect in contacts) < min(rect["bottom"] for rect in contacts)
 
 
 def test_long_role_lines_shrink_to_a_single_centered_line(tmp_path, profile):
@@ -236,11 +252,11 @@ def test_long_role_lines_shrink_to_a_single_centered_line(tmp_path, profile):
     assert len(data["headline"]) > 60
     output = tmp_path / "long-header.pdf"
     render_resume(data, output)
-    with fitz.open(output) as pdf:
-        page = pdf[0]
-        roles, = page.search_for(data["headline"])
-        assert roles.x1 - roles.x0 < page.rect.width - 2 * 28.8
-        assert (roles.x0 + roles.x1) / 2 == pytest.approx(page.rect.width / 2, abs=2)
+    with pdfplumber.open(output) as pdf:
+        page = pdf.pages[0]
+        roles, = page.search(data["headline"], regex=False)
+        assert roles["x1"] - roles["x0"] < page.width - 2 * 28.8
+        assert (roles["x0"] + roles["x1"]) / 2 == pytest.approx(page.width / 2, abs=2)
 
 
 def test_earlier_experience_groups_roles_without_losing_company_dates(tmp_path, profile):
@@ -260,11 +276,11 @@ def test_earlier_experience_groups_roles_without_losing_company_dates(tmp_path, 
     ]
     output = tmp_path / "earlier.pdf"
     render_resume(data, output)
-    with fitz.open(output) as pdf:
-        text = "".join(page.get_text() for page in pdf)
-        for page in pdf:
-            for word in page.get_text("words"):
-                assert 0 <= word[0] <= word[2] <= page.rect.width
+    with pdfplumber.open(output) as pdf:
+        text = unicodedata.normalize("NFKC", "\n".join(p.extract_text() or "" for p in pdf.pages))
+        for page in pdf.pages:
+            for word in page.extract_words():
+                assert 0 <= word["x0"] <= word["x1"] <= page.width
     assert text.count("Developer") == 1
     assert text.count("Tech Lead") == 1
     for _, company, _, start, end in entries:
@@ -279,8 +295,7 @@ def test_stealth_and_contractor_flags_change_only_company_display(tmp_path, prof
     data["experience"][0]["contractor"] = True
     output = tmp_path / "stealth.pdf"
     render_resume(data, output)
-    with fitz.open(output) as pdf:
-        text = " ".join(page.get_text() for page in pdf)
+    text = pdf_text(output)
     assert "Confidential Client (NDA)" in text
     assert "Really Concealed Ltd" not in text
     assert "· Contract" in text
@@ -292,8 +307,7 @@ def test_contractor_flag_marks_named_companies(tmp_path, profile):
     data["experience"][0]["contractor"] = True
     output = tmp_path / "contract.pdf"
     render_resume(data, output)
-    with fitz.open(output) as pdf:
-        text = " ".join(page.get_text() for page in pdf)
+    text = pdf_text(output)
     assert "Example Systems" in text and "· Contract" in text
     assert "Confidential Client" not in text
 
@@ -318,8 +332,7 @@ def test_earlier_layout_lines_stack_companies_and_inline_stays_joined(tmp_path, 
     ]
     output = tmp_path / "layout.pdf"
     render_resume(data, output)
-    with fitz.open(output) as pdf:
-        lines = [line for page in pdf for line in page.get_text().splitlines()]
+    lines = pdf_text(output).splitlines()
     stacked_lines = [line.strip() for line in lines if "Stacked Company" in line]
     inline_lines = [line.strip() for line in lines if "Inline Company" in line]
     assert len(stacked_lines) == 2 and any("Stacked Company A" in line for line in stacked_lines) and any("Stacked Company B" in line for line in stacked_lines)
@@ -335,21 +348,21 @@ def test_resume_pairs_footer_sections_and_places_achievements_last(tmp_path, pro
     output = tmp_path / "footer.pdf"
     render_resume(data, output, language)
     positions = {}
-    with fitz.open(output) as pdf:
-        text = "".join(page.get_text() for page in pdf)
-        for index, page in enumerate(pdf):
+    with pdfplumber.open(output) as pdf:
+        text = unicodedata.normalize("NFKC", "\n".join(p.extract_text() or "" for p in pdf.pages))
+        for index, page in enumerate(pdf.pages):
             for heading in headings:
-                matches = page.search_for(heading)
+                matches = page.search(heading, regex=False)
                 if matches and heading not in positions:
                     positions[heading] = (index, matches[0])
     for left, right in ((headings[0], headings[1]), (headings[2], headings[3])):
         left_page, left_rect = positions[left]
         right_page, right_rect = positions[right]
         assert left_page == right_page
-        assert left_rect.y0 == pytest.approx(right_rect.y0, abs=1)
-        assert left_rect.x0 < right_rect.x0
-    assert [(positions[heading][0], positions[heading][1].y0) for heading in headings[::2]] == sorted(
-        (positions[heading][0], positions[heading][1].y0) for heading in headings[::2]
+        assert left_rect["top"] == pytest.approx(right_rect["top"], abs=1)
+        assert left_rect["x0"] < right_rect["x0"]
+    assert [(positions[heading][0], positions[heading][1]["top"]) for heading in headings[::2]] == sorted(
+        (positions[heading][0], positions[heading][1]["top"]) for heading in headings[::2]
     )
     assert profile.achievements[0] in text.replace("\n", " ")
 
@@ -367,10 +380,10 @@ def test_unpaired_footer_sections_render_without_empty_sections(tmp_path, profil
             data[key] = []
     output = tmp_path / "unpaired.pdf"
     render_resume(data, output)
-    with fitz.open(output) as pdf:
-        matches = [rect for page in pdf for rect in page.search_for(heading)]
-        assert matches[0].x0 < pdf[0].rect.width / 4
-        lines = {line.strip() for page in pdf for line in page.get_text().splitlines()}
+    with pdfplumber.open(output) as pdf:
+        matches = [rect for page in pdf.pages for rect in page.search(heading, regex=False)]
+        assert matches[0]["x0"] < pdf.pages[0].width / 4
+        lines = {unicodedata.normalize("NFKC", line.strip()) for page in pdf.pages for line in (page.extract_text() or "").splitlines()}
     assert heading in lines
     assert not ({"Education", "Languages", "Certifications", "Skills", "Selected Achievements"} - {heading}) & lines
 
@@ -385,8 +398,7 @@ def test_experience_header_stays_with_its_first_bullet(tmp_path, profile, preced
     data["experience"][1]["bullets"] = [first_bullet]
     output = tmp_path / "pagination.pdf"
     render_resume(data, output)
-    with fitz.open(output) as pdf:
-        pages = [page.get_text() for page in pdf]
+    pages = pdf_pages(output)
     company_page = next(i for i, text in enumerate(pages) if data["experience"][1]["company"] in text)
     bullet_page = next(i for i, text in enumerate(pages) if first_bullet in text.replace("\n", " "))
     assert company_page == bullet_page

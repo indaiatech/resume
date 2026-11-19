@@ -221,4 +221,4 @@ Deterministic checks cover evidence rejection, scoring, explicit review, loopbac
 
 ## Licensing
 
-This project is MIT-licensed (see [LICENSE](LICENSE)). PyMuPDF remains available under AGPL or a commercial license: distributing binaries or offering a service built on it carries AGPL obligations for the combined work. Review those obligations; this is not an all-MIT dependency stack.
+This project is MIT-licensed (see [LICENSE](LICENSE)). Runtime dependencies are permissively licensed: pdfplumber and pdfminer.six (MIT) and pypdfium2 (Apache-2.0; the bundled PDFium is BSD-3). Development-only reportlab and pypdf are BSD-3. No copyleft component remains, so the earlier PyMuPDF AGPL caveat no longer applies.

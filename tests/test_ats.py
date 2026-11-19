@@ -2,7 +2,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-import pymupdf as fitz
+from pdf_helpers import PdfBuilder, encrypt_pdf
 
 from resume_tool.ats import check_pdf
 
@@ -13,12 +13,11 @@ class PdfChecksTest(unittest.TestCase):
         self.addCleanup(self.directory.cleanup)
         self.path = Path(self.directory.name) / "resume.pdf"
 
-    def write_pdf(self, text=None, **save_options):
-        with fitz.open() as document:
-            page = document.new_page()
-            if text:
-                page.insert_text((60, 60), text, fontsize=11)
-            document.save(self.path, **save_options)
+    def write_pdf(self, text=None):
+        builder = PdfBuilder()
+        if text:
+            builder.insert_text((60, 60), text)
+        builder.save(self.path)
 
     def codes(self, result):
         return {finding["code"] for finding in result["findings"]}
@@ -63,38 +62,37 @@ class PdfChecksTest(unittest.TestCase):
         self.assertNotIn("missing_dates", self.codes(result))
 
     def test_empty_page_caps_otherwise_readable_document(self):
-        with fitz.open() as document:
-            page = document.new_page()
-            page.insert_text((60, 60), "Experience\nEngineer 2020-2024\nalex@example.com\n+55 19 99999-1234")
-            document.new_page()
-            document.save(self.path)
+        PdfBuilder() \
+            .insert_text((60, 60), "Experience\nEngineer 2020-2024\nalex@example.com\n+55 19 99999-1234") \
+            .add_page() \
+            .save(self.path)
         result = check_pdf(self.path)
         self.assertLessEqual(result["score"], 20)
         self.assertIn("Engineer", result["extracted_text"])
         self.assertEqual(next(item["page"] for item in result["findings"] if item["code"] == "empty_text_layer"), 2)
 
     def test_columns_require_repeated_side_by_side_lines(self):
-        with fitz.open() as document:
-            page = document.new_page()
-            page.insert_text((50, 80), "Left column\nPython\nSQL\nLinux", fontsize=11)
-            page.insert_text((330, 80), "Right column\nEngineer\nEducation\nProjects", fontsize=11)
-            document.save(self.path)
+        PdfBuilder() \
+            .insert_text((50, 80), "Left column\nPython\nSQL\nLinux") \
+            .insert_text((330, 80), "Right column\nEngineer\nEducation\nProjects") \
+            .save(self.path)
         self.assertIn("possible_columns", self.codes(check_pdf(self.path)))
 
     def test_tiny_and_invisible_text_are_reported(self):
-        with fitz.open() as document:
-            page = document.new_page()
-            page.insert_text((60, 60), "Very small text", fontsize=5)
-            page.insert_text((60, 100), "Hidden keywords", render_mode=3)
-            page.insert_text((60, 140), "White keywords", color=(1, 1, 1))
-            document.save(self.path)
+        PdfBuilder() \
+            .insert_text((60, 60), "Very small text", fontsize=5) \
+            .insert_text((60, 100), "Hidden keywords", render_mode=3) \
+            .insert_text((60, 140), "White keywords", color=(1, 1, 1)) \
+            .save(self.path)
         codes = self.codes(check_pdf(self.path))
         self.assertIn("tiny_fonts", codes)
         self.assertIn("invisible_text", codes)
         self.assertIn("white_text", codes)
 
     def test_encrypted_pdf_has_actionable_error(self):
-        self.write_pdf("Private resume", encryption=fitz.PDF_ENCRYPT_AES_256, owner_pw="owner", user_pw="reader")
+        plain = self.path.with_name("plain.pdf")
+        PdfBuilder().insert_text((60, 60), "Private resume").save(plain)
+        encrypt_pdf(plain, self.path)
         with self.assertRaisesRegex(ValueError, "Encrypted PDF.*decrypted copy"):
             check_pdf(self.path)
 

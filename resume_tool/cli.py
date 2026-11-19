@@ -9,8 +9,11 @@ import re
 import sys
 import uuid
 
-import pymupdf as fitz
 import yaml
+from pdfminer.high_level import extract_pages
+from pdfminer.layout import LAParams, LTTextContainer
+from pdfminer.pdfdocument import PDFEncryptionError
+from pdfminer.pdfparser import PDFSyntaxError
 from pydantic import ValidationError
 
 from .llm import infer
@@ -54,35 +57,34 @@ def job_description(required: bool) -> str | None:
     return job
 
 
-def _page_text(page) -> str:
-    # LinkedIn exports use a sidebar plus a main column; naive extraction interleaves them mid-sentence.
-    blocks = [b for b in page.get_text("blocks") if b[6] == 0 and b[4].strip()]
-    if len(blocks) >= 4:
-        # Cluster blocks by where their text starts: each x0 cluster is one column,
+def _page_text(page_layout) -> str:
+    lines = [line for element in page_layout if isinstance(element, LTTextContainer) for line in element]
+    if len(lines) >= 4:
+        # Cluster lines by where their text starts: each x0 cluster is one column,
         # read columns left to right and top to bottom inside each.
-        starts = sorted({b[0] for b in blocks})
+        starts = sorted({line.x0 for line in lines})
         clusters: list[float] = []
         for x in starts:
             if not clusters or x - clusters[-1] > 40:
                 clusters.append(x)
 
-        def column(b) -> int:
-            return next(i for i, x in enumerate(clusters) if x <= b[0] + 1e-6 and (i + 1 == len(clusters) or b[0] + 1e-6 < clusters[i + 1]))
+        def column(line) -> int:
+            return next(i for i, x in enumerate(clusters) if x <= line.x0 + 1e-6 and (i + 1 == len(clusters) or line.x0 + 1e-6 < clusters[i + 1]))
 
-        ordered = sorted(blocks, key=lambda b: (column(b), b[1], b[0]))
-        return "\n".join(b[4] for b in ordered)
-    return page.get_text(sort=True)
+        ordered = sorted(lines, key=lambda line: (column(line), -line.y1, line.x0))
+        return "\n".join(line.get_text().strip() for line in ordered)
+    return "".join(line.get_text() for line in lines).strip()
 
 
 def extract_pdf(path: Path) -> str:
     if path.stat().st_size > 25 * 1024 * 1024:
         raise ValueError("PDF exceeds 25 MB")
-    with fitz.open(path) as document:
-        if document.needs_pass:
-            raise ValueError("Encrypted PDF: export an unencrypted copy first")
-        if document.page_count > 30:
-            raise ValueError("PDF exceeds 30 pages")
-        pages = [_page_text(page).strip() for page in document]
+    try:
+        pages = [_page_text(layout) for layout in extract_pages(path, laparams=LAParams())]
+    except PDFEncryptionError:
+        raise ValueError("Encrypted PDF: export an unencrypted copy first") from None
+    if len(pages) > 30:
+        raise ValueError("PDF exceeds 30 pages")
     if not pages or any(len(page) < 20 for page in pages):
         raise ValueError("PDF has empty or image-only pages. Export a text-based LinkedIn PDF; OCR is not supported")
     text = "\n\n".join(pages)
@@ -282,7 +284,7 @@ def main() -> int:
                 from .render import render_resume
                 render_resume(wording, folder / "resume.pdf", language, selection)
             print(f"Artifacts: {folder}")
-    except (ValueError, OSError, KeyError, ValidationError, yaml.YAMLError, fitz.FileDataError) as exc:
+    except (ValueError, OSError, KeyError, ValidationError, yaml.YAMLError, PDFSyntaxError) as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 1
     return 0

@@ -4,6 +4,7 @@
 
 - Python 3.13.16; project supports Python 3.12+.
 - PyMuPDF 1.28.2, Typst Python binding 0.15.2, Pydantic 2.14.3, PyYAML 6.0.3.
+- Note: after these runs, PyMuPDF was replaced by pdfplumber (MIT), pdfminer.six, and pypdfium2 to keep every dependency permissively licensed. The deterministic checks were re-run and pass; the ATS heuristics are unchanged except the PyMuPDF-specific `repaired_pdf` warning, which was removed.
 - Ollama 0.40.16, CPU inference through Docker.
 - Docker VM memory: 7,959,105,536 bytes, approximately 7.4 GiB. Host RAM is not the container VM's available RAM.
 - NVIDIA GPU access failed during container creation (`no known GPU vendor found`); no driver or daemon configuration was modified.

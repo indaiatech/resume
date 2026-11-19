@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Replace PyMuPDF with pdfplumber (MIT), pdfminer.six, and pypdfium2 so every runtime dependency stays permissively licensed; the PyMuPDF-specific repaired-PDF warning is gone.
 - Publish under the MIT license with community health files, a CI workflow, and repository governance.
 
 - Preserve complete profile details while grouping `collapse: true` roles under Earlier Experience in resumes.

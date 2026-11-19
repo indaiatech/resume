@@ -3,7 +3,7 @@ from pathlib import Path
 import sys
 import urllib.error
 
-import pymupdf
+import pdfplumber
 import pytest
 import yaml
 
@@ -170,6 +170,6 @@ def test_resume_cli_uses_the_configured_source(tmp_path, remote, monkeypatch, us
         monkeypatch.setattr(profile_source.urllib.request, "urlopen", unexpected_request)
     assert cli.main() == 0
     pdf, = Path("output").glob("*/resume.pdf")
-    with pymupdf.open(pdf) as document:
-        assert len(document) == 1
-        assert "Alex Example" in document[0].get_text()
+    with pdfplumber.open(pdf) as document:
+        assert len(document.pages) == 1
+        assert "Alex Example" in (document.pages[0].extract_text() or "")

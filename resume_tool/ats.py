@@ -6,7 +6,7 @@ https://github.com/reactive-resume/reactive-resume/tree/602578f75edb77b739ea4e18
 Its TypeScript analyzer is browser-independent; its PDF.js extraction adapter is
 in apps/web/src/features/ats-checker/extract-client.ts. Reusing it would require
 a JavaScript runtime and its extraction schema, not just a Python dependency.
-This PyMuPDF implementation does not copy or claim to run that engine.
+This pdfplumber and pdfium implementation does not copy or claim to run that engine.
 
 The score sums remaining points across text (40), layout (20), contact (20),
 sections (10), and dates (10). Deductions are declared at each finding below;
@@ -14,11 +14,18 @@ textless documents score zero and any textless page caps the score at 20.
 No OCR, network requests, or claims about a particular employer's parser.
 """
 
+import ctypes
 from pathlib import Path
 import re
 import unicodedata
 
-import pymupdf as fitz
+import pypdfium2 as pdfium
+import pypdfium2_raw as pdfium_c
+from pdfminer.high_level import extract_pages
+from pdfminer.layout import LAParams, LTChar, LTTextContainer
+from pdfminer.pdfdocument import PDFEncryptionError
+from pdfminer.pdfparser import PDFSyntaxError
+from pypdfium2 import PdfiumError
 
 
 DISCLAIMER = (
@@ -112,45 +119,46 @@ def check_pdf(path: Path) -> dict:
     pages_text = []
     empty_pages = []
     try:
-        with fitz.open(path) as document:
-            if not document.is_pdf:
-                raise ValueError("Not a PDF: export the source document as PDF and try again.")
-            if document.needs_pass or document.is_encrypted:
-                raise ValueError("Encrypted PDF: save a decrypted copy locally before checking it.")
-            if not document.page_count:
-                raise ValueError("The PDF has no pages: export it again from the source document.")
-            if document.is_repaired:
-                add("text", "repaired_pdf", "warning", "The PDF required structural repair; re-export it from the source document.", 10)
-            for number, page in enumerate(document, 1):
-                text = page.get_text("text", sort=True)
-                pages_text.append(text)
-                if not any(char.isalnum() for char in text):
-                    empty_pages.append(number)
-                    add("text", "empty_text_layer", "blocker", "No usable text layer on this page. Export selectable text or run OCR locally, then check again.", 40, number)
-                if "\ufffd" in text:
-                    add("text", "replacement_characters", "warning", "Extracted text contains Unicode replacement characters; check font encoding and re-export.", 15, number)
-                lines = []
-                tiny = False
-                for block in page.get_text("dict")["blocks"]:
-                    for line in block.get("lines", []):
-                        spans = [span for span in line["spans"] if span["text"].strip()]
-                        if spans:
-                            lines.append(tuple(line["bbox"]))
-                            tiny |= any(span["size"] < 8 for span in spans)
-                if tiny:
-                    add("layout", "tiny_fonts", "warning", "Some text is smaller than 8 points; use a readable body font and inspect extraction.", 5, number)
-                if _has_columns(lines, page.rect.width):
-                    add("layout", "possible_columns", "warning", "At least three vertically overlapping text lines occur on each side of a 24-point gutter. Possible columns may interleave; inspect extracted text order.", 10, number)
-                traces = [span for span in page.get_texttrace() if span.get("chars")]
-                if any(span.get("type") == 3 or span.get("opacity", 1) < 0.01 for span in traces):
+        for number, page_layout in enumerate(extract_pages(path, laparams=LAParams()), 1):
+            lines = [line for element in page_layout if isinstance(element, LTTextContainer) for line in element]
+            text = "\n".join(line.get_text().strip() for line in lines)
+            pages_text.append(text)
+            if not any(char.isalnum() for char in text):
+                empty_pages.append(number)
+                add("text", "empty_text_layer", "blocker", "No usable text layer on this page. Export selectable text or run OCR locally, then check again.", 40, number)
+            if "\ufffd" in text:
+                add("text", "replacement_characters", "warning", "Extracted text contains Unicode replacement characters; check font encoding and re-export.", 15, number)
+            if any(isinstance(char, LTChar) and char.size < 8 for line in lines for char in line):
+                add("layout", "tiny_fonts", "warning", "Some text is smaller than 8 points; use a readable body font and inspect extraction.", 5, number)
+            if _has_columns([line.bbox for line in lines], page_layout.width):
+                add("layout", "possible_columns", "warning", "At least three vertically overlapping text lines occur on each side of a 24-point gutter. Possible columns may interleave; inspect extracted text order.", 10, number)
+        if not pages_text:
+            raise ValueError("The PDF has no pages: export it again from the source document.")
+        # pdfium exposes text render mode and fill alpha, which pdfminer does not.
+        traced = pdfium.PdfDocument(path)
+        try:
+            for number, page in enumerate(traced, 1):
+                text_page = page.get_textpage()
+                invisible = white_text = False
+                for index in range(pdfium_c.FPDFText_CountChars(text_page.raw)):
+                    text_object = pdfium_c.FPDFText_GetTextObject(text_page.raw, index)
+                    if not text_object:
+                        continue
+                    render_mode = pdfium_c.FPDFTextObj_GetTextRenderMode(text_object)
+                    measured = [ctypes.c_uint() for _ in range(4)]
+                    pdfium_c.FPDFText_GetFillColor(text_page.raw, index, *(ctypes.byref(value) for value in measured))
+                    red, green, blue, alpha = (value.value / 255 for value in measured)
+                    invisible |= render_mode == 3 or alpha < 0.01
+                    white_text |= render_mode != 3 and alpha >= 0.01 and min(red, green, blue) >= 0.98
+                if invisible:
                     add("text", "invisible_text", "warning", "Invisible or zero-opacity text is present. It may be an OCR layer; verify it matches the visible resume.", 10, number)
-                if any(
-                    span.get("type") != 3 and span.get("color")
-                    and all(component >= 0.98 for component in span["color"])
-                    for span in traces
-                ):
+                if white_text:
                     add("text", "white_text", "warning", "White text is present; it may be legitimate on a dark background or hidden on white. Check visually.", 5, number)
-    except (RuntimeError, fitz.FileDataError) as error:
+        finally:
+            traced.close()
+    except PDFEncryptionError:
+        raise ValueError("Encrypted PDF: save a decrypted copy locally before checking it.") from None
+    except (PDFSyntaxError, PdfiumError, RuntimeError) as error:
         raise ValueError("The PDF is corrupt or could not be extracted; re-export it from the source document.") from error
 
     text = "\n\f\n".join(pages_text)

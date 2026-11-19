@@ -13,7 +13,7 @@ Sources inspected during v1 design:
 
 ### V1 decision
 
-Use an independent Python/PyMuPDF 80/20 checker. Reusing Reactive Resume's engine is possible, but adds a JavaScript runtime and an adapter for its extraction schema alongside the Python PDF extraction already needed for import. For this small local CLI, that integration cost was not selected. No Reactive Resume source is vendored, and no claim of rule or score equivalence is made. A future replacement should compare actual PDF findings, not just numerical scores.
+Use an independent Python 80/20 checker (initially PyMuPDF; later pdfplumber and pdfium for permissive licensing). Reusing Reactive Resume's engine is possible, but adds a JavaScript runtime and an adapter for its extraction schema alongside the Python PDF extraction already needed for import. For this small local CLI, that integration cost was not selected. No Reactive Resume source is vendored, and no claim of rule or score equivalence is made. A future replacement should compare actual PDF findings, not just numerical scores.
 
 Two distinct assessments remain separate:
 
@@ -45,4 +45,4 @@ V1 adapts this to experienced professionals: experience first, one column, no ph
 
 ## PDF dependency license
 
-[PyMuPDF's official licensing notice](https://pymupdf.readthedocs.io/en/latest/about.html) identifies AGPL and commercial licensing options. V1 uses the open-source dependency for this local tool; it is not an all-MIT dependency stack. Review the license obligations before distributing the application or offering it as a service. No project license has been selected on the owner's behalf.
+PyMuPDF originally carried an AGPL/commercial dual license; it was replaced by pdfplumber (MIT), pdfminer.six (MIT), and pypdfium2 (Apache-2.0, bundled PDFium under BSD-3), so the toolkit no longer depends on copyleft components. The project itself is MIT-licensed.
